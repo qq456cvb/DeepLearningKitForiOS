@@ -9,7 +9,7 @@
 import Foundation
 import Metal
 
-func getDataFromBlob(blob: NSDictionary) -> ([Float], [Float]) {
+func getDataFromBlob(_ blob: NSDictionary) -> ([Float], [Float]) {
     print(" ==> getDataFromBlob")
     
     let shape = blob["shape"] as! NSDictionary
@@ -23,21 +23,21 @@ func getDataFromBlob(blob: NSDictionary) -> ([Float], [Float]) {
 
 
 
-func createConvolutionLayerCached(layer: NSDictionary,
+func createConvolutionLayerCached(_ layer: NSDictionary,
     inputBuffer: MTLBuffer,
     inputShape: [Float],
     metalCommandQueue: MTLCommandQueue, metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice,
-    inout layer_data_caches: [Dictionary<String,MTLBuffer>],
-    inout blob_cache: [Dictionary<String,([Float],[Float])>],
+    layer_data_caches: inout [Dictionary<String,MTLBuffer>],
+    blob_cache: inout [Dictionary<String,([Float],[Float])>],
     layer_number: Int,
     layer_string: String) -> (MTLBuffer, MTLCommandBuffer, [Float]) {
         
-        let start = NSDate()
+        let start = Date()
         
         print("CREATECONVLAYERCACHED")
         
 //        let metalCommandBuffer = metalCommandQueue.commandBuffer()
-        let metalCommandBuffer = metalCommandQueue.commandBufferWithUnretainedReferences()
+        let metalCommandBuffer = metalCommandQueue.makeCommandBufferWithUnretainedReferences()
         
         var convolution_params_dict:NSDictionary = NSDictionary()
         var pad:Float = 0.0
@@ -73,7 +73,7 @@ func createConvolutionLayerCached(layer: NSDictionary,
                 kernel_size = val
             }
             
-            let startblob = NSDate()
+            let startblob = Date()
 
             
             if let tmpval = blob_cache[layer_number]["0"] {
@@ -90,7 +90,7 @@ func createConvolutionLayerCached(layer: NSDictionary,
             blobs = layer["blobs"] as! [NSDictionary]
             (_, bias_data) = getDataFromBlob(blobs[1])
 
-            print("### Time to blob: \(NSDate().timeIntervalSinceDate(startblob))")
+            print("### Time to blob: \(Date().timeIntervalSince(startblob))")
 
             
             /*
@@ -105,7 +105,7 @@ func createConvolutionLayerCached(layer: NSDictionary,
             h = (inputShape[2] + 2 * pad - kernel_size) / stride + 1
             w = (inputShape[3] + 2 * pad - kernel_size) / stride + 1
             result_shape = [inputShape[0], weight_shape[0], h, w]
-            outputCount = Int(result_shape.reduce(1, combine: *))
+            outputCount = Int(result_shape.reduce(1, *))
             
             // Create input and output vectors, and corresponding metal buffer
             input_dimensions = MetalTensorDimensions(n: inputShape[0], channels: inputShape[1], width: inputShape[2], height: inputShape[3])
@@ -129,14 +129,14 @@ func createConvolutionLayerCached(layer: NSDictionary,
         
         print("AFTER BIG CALL")
         
-        print("### Time to setup convolution layer: \(NSDate().timeIntervalSinceDate(start))")
+        print("### Time to setup convolution layer: \(Date().timeIntervalSince(start))")
 
         
         return (resultBuffer, metalCommandBuffer, result_shape)
         
 }
 
-func addConvolutionCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
+func addConvolutionCommandToCommandBufferCached(_ commandBuffer: MTLCommandBuffer,
     inputBuffer: MTLBuffer,
     im2ColCount: Int,
     weights: [Float],
@@ -145,11 +145,11 @@ func addConvolutionCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
     tensor_dimensions: [MetalTensorDimensions],
     bias: [Float],
     metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice,
-    inout layer_data_caches: [Dictionary<String,MTLBuffer>],
+    layer_data_caches: inout [Dictionary<String,MTLBuffer>],
     layer_number: Int,
     layer_string: String) -> MTLBuffer {
         
-        let start = NSDate()
+        let start = Date()
         
         print("before output and col_output")
         
@@ -178,11 +178,11 @@ func addConvolutionCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
         
         
         // Create Metal compute command encoder for im2col
-        var metalComputeCommandEncoder = commandBuffer.computeCommandEncoder()
-        metalComputeCommandEncoder.setBuffer(inputBuffer, offset: 0, atIndex: 0)
-        metalComputeCommandEncoder.setBuffer(tensorDimensionsMetalBuffer, offset: 0, atIndex: 1)
-        metalComputeCommandEncoder.setBuffer(convolutionParamsMetalBuffer, offset: 0, atIndex: 2)
-        metalComputeCommandEncoder.setBuffer(colOutputMetalBuffer, offset: 0, atIndex: 3)
+        var metalComputeCommandEncoder = commandBuffer.makeComputeCommandEncoder()
+        metalComputeCommandEncoder.setBuffer(inputBuffer, offset: 0, at: 0)
+        metalComputeCommandEncoder.setBuffer(tensorDimensionsMetalBuffer, offset: 0, at: 1)
+        metalComputeCommandEncoder.setBuffer(convolutionParamsMetalBuffer, offset: 0, at: 2)
+        metalComputeCommandEncoder.setBuffer(colOutputMetalBuffer, offset: 0, at: 3)
         //metalComputeCommandEncoder.setComputePipelineState(im2colComputePipelineState)
         
         
@@ -205,14 +205,14 @@ func addConvolutionCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
         
         
         let (_, convolutionComputePipelineState, _) = setupShaderInMetalPipeline("convolution_layer", metalDefaultLibrary: metalDefaultLibrary, metalDevice: metalDevice)
-        metalComputeCommandEncoder = commandBuffer.computeCommandEncoder()
+        metalComputeCommandEncoder = commandBuffer.makeComputeCommandEncoder()
         
         // Create Metal Compute Command Encoder and add input and output buffers to it
-        metalComputeCommandEncoder.setBuffer(resultMetalBuffer, offset: 0, atIndex: 0)
-        metalComputeCommandEncoder.setBuffer(weightMetalBuffer, offset: 0, atIndex: 1)
-        metalComputeCommandEncoder.setBuffer(tensorDimensionsMetalBuffer, offset: 0, atIndex: 2)
-        metalComputeCommandEncoder.setBuffer(colOutputMetalBuffer, offset: 0, atIndex: 3)
-        metalComputeCommandEncoder.setBuffer(biasMetalBuffer, offset: 0, atIndex: 4)
+        metalComputeCommandEncoder.setBuffer(resultMetalBuffer, offset: 0, at: 0)
+        metalComputeCommandEncoder.setBuffer(weightMetalBuffer, offset: 0, at: 1)
+        metalComputeCommandEncoder.setBuffer(tensorDimensionsMetalBuffer, offset: 0, at: 2)
+        metalComputeCommandEncoder.setBuffer(colOutputMetalBuffer, offset: 0, at: 3)
+        metalComputeCommandEncoder.setBuffer(biasMetalBuffer, offset: 0, at: 4)
         
         // Set the shader function that Metal will use
         metalComputeCommandEncoder.setComputePipelineState(convolutionComputePipelineState)
@@ -228,7 +228,7 @@ func addConvolutionCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
         
         print("after endencoding")
         
-        print("#### Time to add convolution layer: \(NSDate().timeIntervalSinceDate(start))")
+        print("#### Time to add convolution layer: \(Date().timeIntervalSince(start))")
 
         
         return resultMetalBuffer

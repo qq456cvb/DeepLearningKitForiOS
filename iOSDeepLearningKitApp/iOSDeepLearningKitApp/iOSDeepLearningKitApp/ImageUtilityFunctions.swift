@@ -13,35 +13,35 @@ import Foundation
 import UIKit
 import Accelerate
 
-func imageToMatrix(image: UIImage) -> ([Float], [Float], [Float], [Float])
+func imageToMatrix(_ image: UIImage) -> ([Float], [Float], [Float], [Float])
 {
-    let imageRef = image.CGImage
-    let width = CGImageGetWidth(imageRef)
-    let height = CGImageGetHeight(imageRef)
+    let imageRef = image.cgImage
+    let width = imageRef?.width
+    let height = imageRef?.height
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     let bytesPerPixel = 4
-    let bytesPerRow:UInt = UInt(bytesPerPixel) * UInt(width)
+    let bytesPerRow:UInt = UInt(bytesPerPixel) * UInt(width!)
     let bitsPerComponent:UInt = 8
-    let pix = Int(width) * Int(height)
+    let pix = Int(width!) * Int(height!)
     let count:Int = 4 * Int(pix)
     
     // Pulling the color out of the image
-    let rawData = UnsafeMutablePointer<UInt8>.alloc(4 * width * height)
-    let temp = CGImageAlphaInfo.PremultipliedLast.rawValue
-    let context = CGBitmapContextCreate(rawData, Int(width), Int(height), Int(bitsPerComponent), Int(bytesPerRow), colorSpace, temp)
-    CGContextDrawImage(context, CGRectMake(0, 0, CGFloat(width), CGFloat(height)), imageRef)
+    let rawData = UnsafeMutablePointer<UInt8>.allocate(capacity: 4 * width! * height!)
+    let temp = CGImageAlphaInfo.premultipliedLast.rawValue
+    let context = CGContext(data: rawData, width: Int(width!), height: Int(height!), bitsPerComponent: Int(bitsPerComponent), bytesPerRow: Int(bytesPerRow), space: colorSpace, bitmapInfo: temp)
+    context?.draw(imageRef!, in: CGRect(x: 0, y: 0, width: CGFloat(width!), height: CGFloat(height!)))
     
     // Unsigned char to double conversion
-    var rawDataArray: [Float] = Array(count: count, repeatedValue: 0.0)
+    var rawDataArray: [Float] = Array(repeating: 0.0, count: count)
     vDSP_vfltu8(rawData, vDSP_Stride(1), &rawDataArray, 1, vDSP_Length(count))
     
     // Indices matrix
-    var i: [Float] = Array(count: pix, repeatedValue: 0.0)
+    var i: [Float] = Array(repeating: 0.0, count: pix)
     var min: Float = 0.0
     var step: Float = 4.0
     vDSP_vramp(&min, &step, &i, vDSP_Stride(1), vDSP_Length(i.count))
     
-    func increaseMatrix(matrix: [Float]) -> [Float]
+    func increaseMatrix(_ matrix: [Float]) -> [Float]
     {
         var matrix = matrix
         var increaser: Float = 1.0
@@ -51,28 +51,28 @@ func imageToMatrix(image: UIImage) -> ([Float], [Float], [Float], [Float])
     }
     
     // Red matrix
-    var r: [Float] = Array(count: pix, repeatedValue: 0.0)
+    var r: [Float] = Array(repeating: 0.0, count: pix)
     vDSP_vindex(&rawDataArray, &i, vDSP_Stride(1), &r, vDSP_Stride(1), vDSP_Length(r.count))
     
     increaseMatrix(i)
     min = 1.0
     vDSP_vramp(&min, &step, &i, vDSP_Stride(1), vDSP_Length(i.count))
     // Green matrix
-    var g: [Float] = Array(count: pix, repeatedValue: 0.0)
+    var g: [Float] = Array(repeating: 0.0, count: pix)
     vDSP_vindex(&rawDataArray, &i, vDSP_Stride(1), &g, vDSP_Stride(1), vDSP_Length(g.count))
     
     increaseMatrix(i)
     min = 2.0
     vDSP_vramp(&min, &step, &i, vDSP_Stride(1), vDSP_Length(i.count))
     // Blue matrix
-    var b: [Float] = Array(count: pix, repeatedValue: 0.0)
+    var b: [Float] = Array(repeating: 0.0, count: pix)
     vDSP_vindex(&rawDataArray, &i, vDSP_Stride(1), &b, vDSP_Stride(1), vDSP_Length(b.count))
     
     increaseMatrix(i)
     min = 3.0
     vDSP_vramp(&min, &step, &i, vDSP_Stride(1), vDSP_Length(i.count))
     // Alpha matrix
-    var a: [Float] = Array(count: pix, repeatedValue: 0.0)
+    var a: [Float] = Array(repeating: 0.0, count: pix)
     vDSP_vindex(&rawDataArray, &i, vDSP_Stride(1), &a, vDSP_Stride(1), vDSP_Length(a.count))
     
     return (r, g, b, a)

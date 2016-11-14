@@ -9,71 +9,77 @@
 import Foundation
 import Metal
 
-func createComplexNumbersArray(count: Int) -> [MetalComplexNumberType] {
+func createComplexNumbersArray(_ count: Int) -> [MetalComplexNumberType] {
     let zeroComplexNumber = MetalComplexNumberType()
-    return [MetalComplexNumberType](count: count, repeatedValue: zeroComplexNumber)
+    return [MetalComplexNumberType](repeating: zeroComplexNumber, count: count)
 }
 
-func createFloatNumbersArray(count: Int) -> [Float] {
-    return [Float](count: count, repeatedValue: 0.0)
+func createFloatNumbersArray(_ count: Int) -> [Float] {
+    return [Float](repeating: 0.0, count: count)
 }
 
-func createFloatMetalBuffer(vector: [Float], let metalDevice:MTLDevice) -> MTLBuffer {
+func createFloatMetalBuffer(_ vector: [Float], metalDevice:MTLDevice) -> MTLBuffer {
     var vector = vector
-    let byteLength = vector.count*sizeof(Float) // future: MTLResourceStorageModePrivate
-    return metalDevice.newBufferWithBytes(&vector, length: byteLength, options: MTLResourceOptions.CPUCacheModeDefaultCache)
+    let byteLength = vector.count*MemoryLayout<Float>.size // future: MTLResourceStorageModePrivate
+    return metalDevice.makeBuffer(bytes: &vector, length: byteLength, options: MTLResourceOptions())
 }
 
 // TODO: could perhaps use generics to combine both functions below?
-func createComplexMetalBuffer(vector:[MetalComplexNumberType], let metalDevice:MTLDevice) -> MTLBuffer {
+func createComplexMetalBuffer(_ vector:[MetalComplexNumberType], metalDevice:MTLDevice) -> MTLBuffer {
     var vector = vector
-    let byteLength = vector.count*sizeof(MetalComplexNumberType) // or size of and actual 1st element object?
-    return metalDevice.newBufferWithBytes(&vector, length: byteLength, options: MTLResourceOptions.CPUCacheModeDefaultCache)
+    let byteLength = vector.count*MemoryLayout<MetalComplexNumberType>.size // or size of and actual 1st element object?
+    return metalDevice.makeBuffer(bytes: &vector, length: byteLength, options: MTLResourceOptions())
 }
 
-func createShaderParametersMetalBuffer(shaderParameters:MetalShaderParameters,  metalDevice:MTLDevice) -> MTLBuffer {
+func createShaderParametersMetalBuffer(_ shaderParameters:MetalShaderParameters,  metalDevice:MTLDevice) -> MTLBuffer {
     var shaderParameters = shaderParameters
-    let byteLength = sizeof(MetalShaderParameters)
-    return metalDevice.newBufferWithBytes(&shaderParameters, length: byteLength, options: MTLResourceOptions.CPUCacheModeDefaultCache)
+    let byteLength = MemoryLayout<MetalShaderParameters>.size
+    return metalDevice.makeBuffer(bytes: &shaderParameters, length: byteLength, options: MTLResourceOptions())
 }
 
-func createMatrixShaderParametersMetalBuffer(params: MetalMatrixVectorParameters,  metalDevice: MTLDevice) -> MTLBuffer {
+func createMatrixShaderParametersMetalBuffer(_ params: MetalMatrixVectorParameters,  metalDevice: MTLDevice) -> MTLBuffer {
     var params = params
-    let byteLength = sizeof(MetalMatrixVectorParameters)
-    return metalDevice.newBufferWithBytes(&params, length: byteLength, options: MTLResourceOptions.CPUCacheModeDefaultCache)
+    let byteLength = MemoryLayout<MetalMatrixVectorParameters>.size
+    return metalDevice.makeBuffer(bytes: &params, length: byteLength, options: MTLResourceOptions())
     
 }
 
-func createPoolingParametersMetalBuffer(params: MetalPoolingParameters, metalDevice: MTLDevice) -> MTLBuffer {
+func createPoolingParametersMetalBuffer(_ params: MetalPoolingParameters, metalDevice: MTLDevice) -> MTLBuffer {
     var params = params
-    let byteLength = sizeof(MetalPoolingParameters)
-    return metalDevice.newBufferWithBytes(&params, length: byteLength, options: MTLResourceOptions.CPUCacheModeDefaultCache)
+    let byteLength = MemoryLayout<MetalPoolingParameters>.size
+    return metalDevice.makeBuffer(bytes: &params, length: byteLength, options: MTLResourceOptions())
 }
 
-func createConvolutionParametersMetalBuffer(params: MetalConvolutionParameters, metalDevice: MTLDevice) -> MTLBuffer {
+func createConvolutionParametersMetalBuffer(_ params: MetalConvolutionParameters, metalDevice: MTLDevice) -> MTLBuffer {
     var params = params
-    let byteLength = sizeof(MetalConvolutionParameters)
-    return metalDevice.newBufferWithBytes(&params, length: byteLength, options: MTLResourceOptions.CPUCacheModeDefaultCache)
+    let byteLength = MemoryLayout<MetalConvolutionParameters>.size
+    return metalDevice.makeBuffer(bytes: &params, length: byteLength, options: MTLResourceOptions())
 }
 
-func createTensorDimensionsVectorMetalBuffer(vector: [MetalTensorDimensions], metalDevice: MTLDevice) -> MTLBuffer {
+func createTensorDimensionsVectorMetalBuffer(_ vector: [MetalTensorDimensions], metalDevice: MTLDevice) -> MTLBuffer {
     var vector = vector
-    let byteLength = vector.count * sizeof(MetalTensorDimensions)
-    return metalDevice.newBufferWithBytes(&vector, length: byteLength, options: MTLResourceOptions.CPUCacheModeDefaultCache)
+    let byteLength = vector.count * MemoryLayout<MetalTensorDimensions>.size
+    return metalDevice.makeBuffer(bytes: &vector, length: byteLength, options: MTLResourceOptions())
 }
 
-func setupShaderInMetalPipeline(shaderName:String, metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice) -> (shader:MTLFunction!,
-    computePipelineState:MTLComputePipelineState!,
-    computePipelineErrors:NSErrorPointer!)  {
-        let shader = metalDefaultLibrary.newFunctionWithName(shaderName)
+func createFCTensorDimensionsVectorMetalBuffer(_ vector: [MetalFCTensorDimensions], metalDevice: MTLDevice) -> MTLBuffer {
+    var vector = vector
+    let byteLength = vector.count * MemoryLayout<MetalFCTensorDimensions>.size
+    return metalDevice.makeBuffer(bytes: &vector, length: byteLength, options: MTLResourceOptions())
+}
+
+func setupShaderInMetalPipeline(_ shaderName:String, metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice) -> (shader:MTLFunction?,
+    computePipelineState:MTLComputePipelineState?,
+    computePipelineErrors:NSErrorPointer?)  {
+        let shader = metalDefaultLibrary.makeFunction(name: shaderName)
         let computePipeLineDescriptor = MTLComputePipelineDescriptor()
         computePipeLineDescriptor.computeFunction = shader
         //        var computePipelineErrors = NSErrorPointer()
         //            let computePipelineState:MTLComputePipelineState = metalDevice.newComputePipelineStateWithFunction(shader!, completionHandler: {(})
-        let computePipelineErrors:NSErrorPointer = nil
+        let computePipelineErrors:NSErrorPointer? = nil
         var computePipelineState:MTLComputePipelineState? = nil
         do {
-            computePipelineState = try metalDevice.newComputePipelineStateWithFunction(shader!)
+            computePipelineState = try metalDevice.makeComputePipelineState(function: shader!)
         } catch {
             print("catching..")
         }
@@ -81,20 +87,20 @@ func setupShaderInMetalPipeline(shaderName:String, metalDefaultLibrary:MTLLibrar
         
 }
 
-func createMetalBuffer(vector:[Float], metalDevice:MTLDevice) -> MTLBuffer {
+func createMetalBuffer(_ vector:[Float], metalDevice:MTLDevice) -> MTLBuffer {
     var vector = vector
-    let byteLength = vector.count*sizeof(Float)
-    return metalDevice.newBufferWithBytes(&vector, length: byteLength, options: MTLResourceOptions.CPUCacheModeDefaultCache)
+    let byteLength = vector.count*MemoryLayout<Float>.size
+    return metalDevice.makeBuffer(bytes: &vector, length: byteLength, options: MTLResourceOptions())
 }
 
-func preLoadMetalShaders(metalDevice: MTLDevice, metalDefaultLibrary: MTLLibrary) {
+func preLoadMetalShaders(_ metalDevice: MTLDevice, metalDefaultLibrary: MTLLibrary) {
     let shaders = ["avg_pool", "max_pool", "rectifier_linear", "convolution_layer", "im2col"]
     for shader in shaders {
         setupShaderInMetalPipeline(shader, metalDefaultLibrary: metalDefaultLibrary,metalDevice: metalDevice) // TODO: this returns stuff
     }
 }
 
-func createOrReuseFloatMetalBuffer(name:String, data: [Float], inout cache:[Dictionary<String,MTLBuffer>], layer_number:Int, metalDevice:MTLDevice) -> MTLBuffer {
+func createOrReuseFloatMetalBuffer(_ name:String, data: [Float], cache:inout [Dictionary<String,MTLBuffer>], layer_number:Int, metalDevice:MTLDevice) -> MTLBuffer {
     var result:MTLBuffer
     if let tmpval = cache[layer_number][name] {
         print("found key = \(name) in cache")
@@ -110,9 +116,9 @@ func createOrReuseFloatMetalBuffer(name:String, data: [Float], inout cache:[Dict
 }
 
 
-func createOrReuseConvolutionParametersMetalBuffer(name:String,
+func createOrReuseConvolutionParametersMetalBuffer(_ name:String,
     data: MetalConvolutionParameters,
-    inout cache:[Dictionary<String,MTLBuffer>], layer_number: Int, metalDevice: MTLDevice) -> MTLBuffer {
+    cache:inout [Dictionary<String,MTLBuffer>], layer_number: Int, metalDevice: MTLDevice) -> MTLBuffer {
         var result:MTLBuffer
         if let tmpval = cache[layer_number][name] {
            print("found key = \(name) in cache")
@@ -127,8 +133,8 @@ func createOrReuseConvolutionParametersMetalBuffer(name:String,
         return result
 }
 
-func createOrReuseTensorDimensionsVectorMetalBuffer(name:String,
-    data:[MetalTensorDimensions],inout cache:[Dictionary<String,MTLBuffer>], layer_number: Int, metalDevice: MTLDevice) -> MTLBuffer {
+func createOrReuseTensorDimensionsVectorMetalBuffer(_ name:String,
+    data:[MetalTensorDimensions],cache:inout [Dictionary<String,MTLBuffer>], layer_number: Int, metalDevice: MTLDevice) -> MTLBuffer {
         var result:MTLBuffer
         if let tmpval = cache[layer_number][name] {
             print("found key = \(name) in cache")
@@ -143,12 +149,28 @@ func createOrReuseTensorDimensionsVectorMetalBuffer(name:String,
         return result
 }
 
+func createOrReuseFCTensorDimensionsVectorMetalBuffer(_ name:String,
+                                                    data:[MetalFCTensorDimensions],cache:inout [Dictionary<String,MTLBuffer>], layer_number: Int, metalDevice: MTLDevice) -> MTLBuffer {
+    var result:MTLBuffer
+    if let tmpval = cache[layer_number][name] {
+        print("found key = \(name) in cache")
+        result = tmpval
+    } else {
+        print("didnt find key = \(name) in cache")
+        result = createFCTensorDimensionsVectorMetalBuffer(data, metalDevice: metalDevice)
+        cache[layer_number][name] = result
+        //print("DEBUG: cache = \(cache)")
+    }
+    
+    return result
+}
+
 //
 //let sizeParamMetalBuffer = createShaderParametersMetalBuffer(size_params, metalDevice: metalDevice)
 //let poolingParamMetalBuffer = createPoolingParametersMetalBuffer(pooling_params, metalDevice: metalDevice)
 
-func createOrReuseShaderParametersMetalBuffer(name:String,
-    data:MetalShaderParameters,inout cache:[Dictionary<String,MTLBuffer>], layer_number: Int, metalDevice: MTLDevice) -> MTLBuffer {
+func createOrReuseShaderParametersMetalBuffer(_ name:String,
+    data:MetalShaderParameters,cache:inout [Dictionary<String,MTLBuffer>], layer_number: Int, metalDevice: MTLDevice) -> MTLBuffer {
         var result:MTLBuffer
         if let tmpval = cache[layer_number][name] {
 //            print("found key = \(name) in cache")
@@ -163,8 +185,8 @@ func createOrReuseShaderParametersMetalBuffer(name:String,
         return result
 }
 
-func createOrReusePoolingParametersMetalBuffer(name:String,
-    data:MetalPoolingParameters,inout cache:[Dictionary<String,MTLBuffer>], layer_number: Int, metalDevice: MTLDevice) -> MTLBuffer {
+func createOrReusePoolingParametersMetalBuffer(_ name:String,
+    data:MetalPoolingParameters,cache:inout [Dictionary<String,MTLBuffer>], layer_number: Int, metalDevice: MTLDevice) -> MTLBuffer {
         var result:MTLBuffer
         if let tmpval = cache[layer_number][name] {
 //            print("found key = \(name) in cache")

@@ -11,7 +11,7 @@ import Metal
 
 
 
-func getDataFromBlob(blob: NSDictionary) -> ([Float], [Float]) {
+func getDataFromBlob(_ blob: NSDictionary) -> ([Float], [Float]) {
     
     let shape = blob["shape"] as! NSDictionary
     let data = blob["data"] as! [Float]
@@ -24,20 +24,20 @@ func getDataFromBlob(blob: NSDictionary) -> ([Float], [Float]) {
 
 
 
-func createConvolutionLayerCached(layer: NSDictionary,
+func createConvolutionLayerCached(_ layer: NSDictionary,
     inputBuffer: MTLBuffer,
     inputShape: [Float],
     metalCommandQueue: MTLCommandQueue, metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice,
-    inout layer_data_caches: [Dictionary<String,MTLBuffer>],
-    inout blob_cache: [Dictionary<String,([Float],[Float])>],
+    layer_data_caches: inout [Dictionary<String,MTLBuffer>],
+    blob_cache: inout [Dictionary<String,([Float],[Float])>],
     layer_number: Int,
     layer_string: String, caching_mode:Bool) -> (MTLBuffer, MTLCommandBuffer, [Float]) {
         
-        _ = NSDate()
+        _ = Date()
         
         
 //        let metalCommandBuffer = metalCommandQueue.commandBuffer()
-        let metalCommandBuffer = metalCommandQueue.commandBufferWithUnretainedReferences()
+        let metalCommandBuffer = metalCommandQueue.makeCommandBufferWithUnretainedReferences()
         
         var convolution_params_dict:NSDictionary = NSDictionary()
         var pad:Float = 0.0
@@ -67,14 +67,21 @@ func createConvolutionLayerCached(layer: NSDictionary,
             pad = 0.0
             kernel_size = 1.0
             stride = 1.0
-            if let val = convolution_params_dict["pad"] as? Float {
+            if  let val = convolution_params_dict["pad"] as? Float{
+                pad = val
+            } else if convolution_params_dict["pad"]  != nil {
+                let val = (convolution_params_dict["pad"] as! [Float])[0]
                 pad = val
             }
-            if let val = convolution_params_dict["kernel_size"] as? Float {
+            if  let val = convolution_params_dict["kernel_size"] as? Float{
+                kernel_size = val
+            } else if convolution_params_dict["kernel_size"]  != nil {
+                let val = (convolution_params_dict["kernel_size"] as! [Float])[0]
                 kernel_size = val
             }
+
             
-            _ = NSDate()
+            _ = Date()
 
             
             if let tmpval = blob_cache[layer_number]["0"] {
@@ -82,8 +89,11 @@ func createConvolutionLayerCached(layer: NSDictionary,
             } else {
                 blobs = layer["blobs"] as! [NSDictionary]
                 (weight_shape, weights) = getDataFromBlob(blobs[0])
+//                print(weights)
                 blob_cache[layer_number]["0"] = (weight_shape, weights)
             }
+//            assert(weight_shape[2] == kernel_size)
+//            assert(weight_shape[3] == kernel_size)
 
             blobs = layer["blobs"] as! [NSDictionary]
             (_, bias_data) = getDataFromBlob(blobs[1])
@@ -93,12 +103,12 @@ func createConvolutionLayerCached(layer: NSDictionary,
             h = (inputShape[2] + 2 * pad - kernel_size) / stride + 1
             w = (inputShape[3] + 2 * pad - kernel_size) / stride + 1
             result_shape = [inputShape[0], weight_shape[0], h, w]
-            outputCount = Int(result_shape.reduce(1, combine: *))
+            outputCount = Int(result_shape.reduce(1, *))
             
             // Create input and output vectors, and corresponding metal buffer
             input_dimensions = MetalTensorDimensions(n: inputShape[0], channels: inputShape[1], width: inputShape[2], height: inputShape[3])
             weight_dimensions = MetalTensorDimensions(n: weight_shape[0], channels: weight_shape[1], width: weight_shape[2], height: weight_shape[3])
-            col_dimensions = MetalTensorDimensions(n: inputShape[0], channels: inputShape[1] * weight_shape[2] * weight_shape[3], width: inputShape[2], height: inputShape[3])
+            col_dimensions = MetalTensorDimensions(n: inputShape[0], channels: inputShape[1] * kernel_size * kernel_size, width: inputShape[2], height: inputShape[3])
             result_dimensions = MetalTensorDimensions(n: result_shape[0], channels: result_shape[1], width: result_shape[2], height: result_shape[3])
             tensor_dimensions = [input_dimensions, weight_dimensions, col_dimensions, result_dimensions]
             
@@ -120,7 +130,7 @@ func createConvolutionLayerCached(layer: NSDictionary,
         
 }
 
-func addConvolutionCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
+func addConvolutionCommandToCommandBufferCached(_ commandBuffer: MTLCommandBuffer,
     inputBuffer: MTLBuffer,
     im2ColCount: Int,
     weights: [Float],
@@ -129,11 +139,11 @@ func addConvolutionCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
     tensor_dimensions: [MetalTensorDimensions],
     bias: [Float],
     metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice,
-    inout layer_data_caches: [Dictionary<String,MTLBuffer>],
+    layer_data_caches: inout [Dictionary<String,MTLBuffer>],
     layer_number: Int,
     layer_string: String, caching_mode:Bool) -> MTLBuffer {
         
-        _ = NSDate()
+        _ = Date()
         
         print("before output and col_output")
         
@@ -164,23 +174,23 @@ func addConvolutionCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
         
         
         // Create Metal compute command encoder for im2col
-        var metalComputeCommandEncoder = commandBuffer.computeCommandEncoder()
-        metalComputeCommandEncoder.setBuffer(inputBuffer, offset: 0, atIndex: 0)
-        metalComputeCommandEncoder.setBuffer(tensorDimensionsMetalBuffer, offset: 0, atIndex: 1)
-        metalComputeCommandEncoder.setBuffer(convolutionParamsMetalBuffer, offset: 0, atIndex: 2)
-        metalComputeCommandEncoder.setBuffer(colOutputMetalBuffer, offset: 0, atIndex: 3)
+        var metalComputeCommandEncoder = commandBuffer.makeComputeCommandEncoder()
+        metalComputeCommandEncoder.setBuffer(inputBuffer, offset: 0, at: 0)
+        metalComputeCommandEncoder.setBuffer(tensorDimensionsMetalBuffer, offset: 0, at: 1)
+        metalComputeCommandEncoder.setBuffer(convolutionParamsMetalBuffer, offset: 0, at: 2)
+        metalComputeCommandEncoder.setBuffer(colOutputMetalBuffer, offset: 0, at: 3)
         //metalComputeCommandEncoder.setComputePipelineState(im2colComputePipelineState)
         
         
         // Set the shader function that Metal will use
-        metalComputeCommandEncoder.setComputePipelineState(im2colComputePipelineState)
+        metalComputeCommandEncoder.setComputePipelineState(im2colComputePipelineState!)
         
         // Set up thread groups on GPU
         // TODO: check out http://metalbyexample.com/introduction-to-compute/
-        var threadsPerGroup = MTLSize(width:im2colComputePipelineState.threadExecutionWidth,height:1,depth:1)
+        var threadsPerGroup = MTLSize(width:(im2colComputePipelineState?.threadExecutionWidth)!,height:1,depth:1)
         // ensure at least 1 threadgroup
         print("before mtlsize 2")
-        var numThreadgroups = MTLSize(width:(col_output.count-1)/im2colComputePipelineState.threadExecutionWidth + 1, height:1, depth:1)
+        var numThreadgroups = MTLSize(width:(col_output.count-1)/(im2colComputePipelineState?.threadExecutionWidth)! + 1, height:1, depth:1)
         metalComputeCommandEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
         
         print("after dispatch")
@@ -192,23 +202,23 @@ func addConvolutionCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
         
         
         let (_, convolutionComputePipelineState, _) = setupShaderInMetalPipeline("convolution_layer", metalDefaultLibrary: metalDefaultLibrary, metalDevice: metalDevice)
-        metalComputeCommandEncoder = commandBuffer.computeCommandEncoder()
+        metalComputeCommandEncoder = commandBuffer.makeComputeCommandEncoder()
         
         // Create Metal Compute Command Encoder and add input and output buffers to it
-        metalComputeCommandEncoder.setBuffer(resultMetalBuffer, offset: 0, atIndex: 0)
-        metalComputeCommandEncoder.setBuffer(weightMetalBuffer, offset: 0, atIndex: 1)
-        metalComputeCommandEncoder.setBuffer(tensorDimensionsMetalBuffer, offset: 0, atIndex: 2)
-        metalComputeCommandEncoder.setBuffer(colOutputMetalBuffer, offset: 0, atIndex: 3)
-        metalComputeCommandEncoder.setBuffer(biasMetalBuffer, offset: 0, atIndex: 4)
+        metalComputeCommandEncoder.setBuffer(resultMetalBuffer, offset: 0, at: 0)
+        metalComputeCommandEncoder.setBuffer(weightMetalBuffer, offset: 0, at: 1)
+        metalComputeCommandEncoder.setBuffer(tensorDimensionsMetalBuffer, offset: 0, at: 2)
+        metalComputeCommandEncoder.setBuffer(colOutputMetalBuffer, offset: 0, at: 3)
+        metalComputeCommandEncoder.setBuffer(biasMetalBuffer, offset: 0, at: 4)
         
         // Set the shader function that Metal will use
-        metalComputeCommandEncoder.setComputePipelineState(convolutionComputePipelineState)
+        metalComputeCommandEncoder.setComputePipelineState(convolutionComputePipelineState!)
         
         // Set up thread groups on GPU
         // TODO: check out http://metalbyexample.com/introduction-to-compute/
-        threadsPerGroup = MTLSize(width:convolutionComputePipelineState.threadExecutionWidth,height:1,depth:1)
+        threadsPerGroup = MTLSize(width:(convolutionComputePipelineState?.threadExecutionWidth)!,height:1,depth:1)
         // ensure at least 1 threadgroup
-        numThreadgroups = MTLSize(width:(outputCount-1)/convolutionComputePipelineState.threadExecutionWidth + 1, height:1, depth:1)
+        numThreadgroups = MTLSize(width:(outputCount-1)/(convolutionComputePipelineState?.threadExecutionWidth)! + 1, height:1, depth:1)
         metalComputeCommandEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
         
         // Finalize configuration

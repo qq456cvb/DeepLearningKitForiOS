@@ -18,41 +18,51 @@ class ViewController: UIViewController {
         // Do any additional setup after loading the view, typically from a nib.
     }
     
-    override func viewDidAppear(animated: Bool) {
+    override func viewDidAppear(_ animated: Bool) {
         
         deepNetwork = DeepNetwork()
         
         // conv1.json contains a cifar 10 image of a cat
-        let conv1Layer = deepNetwork.loadJSONFile("conv1")!
-        let image: [Float] = conv1Layer["input"] as! [Float]
-        
+//        let conv1Layer = deepNetwork.loadJSONFile("conv1")!
+//        let image: [Float] = conv1Layer["input"] as! [Float]
+//        
+//        _ = UIImage(named: "lena")
         // shows a tiny (32x32) CIFAR 10 image on screen
-        showCIFARImage(image)
+//        showCIFARImage(image)
+//        
+//        
+//        var randomimage = createFloatNumbersArray(image.count)
+//        for i in 0..<randomimage.count {
+//            randomimage[i] = Float(arc4random_uniform(1000))
+//        }
+//        
+        let imageShape:[Float] = [1.0, 3.0, 448.0, 448.0]
+        let imageCount = Int(imageShape.reduce(1, *))
         
-        
-        var randomimage = createFloatNumbersArray(image.count)
+        let (r, g, b, _) = imageToMatrix(#imageLiteral(resourceName: "lena"))
+        let image = b + g + r
+//
+        var randomimage = createFloatNumbersArray(imageCount)
         for i in 0..<randomimage.count {
-            randomimage[i] = Float(arc4random_uniform(1000))
+            randomimage[i] = Float(1.0)
         }
-        
-        let imageShape:[Float] = [1.0, 3.0, 32.0, 32.0]
         
         let caching_mode = false
         
         // 0. load network in network model
-        deepNetwork.loadDeepNetworkFromJSON("nin_cifar10_full", inputImage: image, inputShape: imageShape, caching_mode:caching_mode)
+        deepNetwork.loadDeepNetworkFromJSON("yolo_tiny", inputImage: randomimage, inputShape: imageShape, caching_mode:caching_mode)
         
         // 1. classify image (of cat)
-        deepNetwork.classify(image)
+        deepNetwork.classify(randomimage)
         
         
         // 2. reset deep network and classify random image
-        deepNetwork.loadDeepNetworkFromJSON("nin_cifar10_full", inputImage: randomimage, inputShape: imageShape,caching_mode:caching_mode)
-        deepNetwork.classify(randomimage)
+//        deepNetwork.loadDeepNetworkFromJSON("nin_cifar10_full", inputImage: randomimage, inputShape: imageShape,caching_mode:caching_mode)
+//        deepNetwork.classify(randomimage)
         
         // 3. reset deep network and classify cat image again
-        deepNetwork.loadDeepNetworkFromJSON("nin_cifar10_full", inputImage: image, inputShape: imageShape,caching_mode:caching_mode)
-        deepNetwork.classify(image)
+//        deepNetwork.loadDeepNetworkFromJSON("simple", inputImage: image, inputShape: imageShape,caching_mode:caching_mode)
+//        deepNetwork.classify(image)
         
         //exit(0)
     }
@@ -64,13 +74,13 @@ class ViewController: UIViewController {
     
     //***********************************************************************************
     
-    func showCIFARImage(cifarImageData:[Float]) {
+    func showCIFARImage(_ cifarImageData:[Float]) {
         var cifarImageData = cifarImageData
         let size = CGSize(width: 32, height: 32)
         let rect = CGRect(origin: CGPoint(x: 0,y: 0), size: size)
         
         UIGraphicsBeginImageContextWithOptions(size, false, 0)
-        UIColor.whiteColor().setFill() // or custom color
+        UIColor.white.setFill() // or custom color
         UIRectFill(rect)
         var image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
@@ -88,16 +98,16 @@ class ViewController: UIViewController {
                 
                 // used to set pixels - RGBA into an UIImage
                 // for more info about RGBA check out https://en.wikipedia.org/wiki/RGBA_color_space
-                image = image.setPixelColorAtPoint(CGPoint(x: j,y: i), color: UIImage.RawColorType(r,g,b,255))!
+                image = image?.setPixelColorAtPoint(CGPoint(x: j,y: i), color: UIImage.RawColorType(r,g,b,255))!
                 
                 // used to read pixels - RGBA from an UIImage
-                _ = image.getPixelColorAtLocation(CGPoint(x:i, y:j))
+                _ = image?.getPixelColorAtLocation(CGPoint(x:i, y:j))
             }
         }
-        print(image.size)
+        print(image?.size ?? CGSize(width: 0, height: 0))
         
         // Displaying original image.
-        let originalImageView:UIImageView = UIImageView(frame: CGRectMake(20, 20, image.size.width, image.size.height))
+        let originalImageView:UIImageView = UIImageView(frame: CGRect(x: 20, y: 20, width: image!.size.width, height: image!.size.height))
         originalImageView.image = image
         self.view.addSubview(originalImageView)
     }

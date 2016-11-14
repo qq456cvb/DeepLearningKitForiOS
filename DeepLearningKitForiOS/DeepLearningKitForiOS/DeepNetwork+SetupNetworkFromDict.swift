@@ -11,9 +11,9 @@ import Metal
 
 public extension DeepNetwork {
     
-    func setupNetworkFromDict(deepNetworkAsDict: NSDictionary, inputimage: MTLBuffer, inputshape: [Float]) {
+    func setupNetworkFromDict(_ deepNetworkAsDict: NSDictionary, inputimage: MTLBuffer, inputshape: [Float]) {
         
-        let start = NSDate()
+        let start = Date()
         
         gpuCommandLayers = []
 
@@ -24,7 +24,7 @@ public extension DeepNetwork {
         pool_type_caches.append(Dictionary<String,String>())
         blob_cache.append(Dictionary<String,([Float],[Float])>())
         namedDataLayers.append(("input", inputimage))
-        ++layer_number
+        layer_number += 1
         
         
         // Add remaining network
@@ -34,9 +34,9 @@ public extension DeepNetwork {
         self.deepNetworkAsDict = deepNetworkAsDict
         
         // create new command buffer for next layer
-        var currentCommandBuffer: MTLCommandBuffer = metalCommandQueue.commandBufferWithUnretainedReferences()
+        var currentCommandBuffer: MTLCommandBuffer = metalCommandQueue.makeCommandBufferWithUnretainedReferences()
         
-        var t = NSDate()
+        var t = Date()
         for layer in deepNetworkAsDict["layer"] as! [NSDictionary] {
             if let type = layer["type"] as? String {
                 let layer_string = layer["name"] as! String
@@ -65,9 +65,9 @@ public extension DeepNetwork {
                     self.namedDataLayers.append((layer["name"]! as! String, previousBuffer))
                 }
                 let name = layer["name"] as! String
-                print("\(name): \(NSDate().timeIntervalSinceDate(t))")
-                t = NSDate()
-                ++layer_number
+                print("\(name): \(Date().timeIntervalSince(t))")
+                t = Date()
+                layer_number += 1
                 
             }
         }
@@ -80,7 +80,7 @@ public extension DeepNetwork {
         
         print("POOL TYPE CACHES = \(pool_type_caches)")
         
-        print("Time to set up network: \(NSDate().timeIntervalSinceDate(start))")
+        print("Time to set up network: \(Date().timeIntervalSince(start))")
 
     }
 }

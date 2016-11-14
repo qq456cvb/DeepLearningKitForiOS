@@ -58,6 +58,11 @@ public struct MetalTensorDimensions {
     let height: Float
 }
 
+public struct MetalFCTensorDimensions {
+    let rows: Float
+    let cols: Float
+}
+
 public struct MetalConvolutionParameters {
     let pad: Float
     let kernel_size: Float

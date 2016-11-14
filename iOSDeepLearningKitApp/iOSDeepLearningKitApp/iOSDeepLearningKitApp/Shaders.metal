@@ -65,6 +65,11 @@ struct MetalTensorDimensions {
     float height;
 };
 
+struct MetalFCTensorDimensions {
+    float rows;
+    float cols;
+};
+
 struct MetalConvolutionParameters {
     float pad;
     float kernel_size;
@@ -78,10 +83,14 @@ struct MetalConvolutionParameters {
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 
-// Returns max(0, X[id])
+// Returns max(0, X[id]) + negative slope
 kernel void rectifier_linear(device float* X [[ buffer(0)]],
+                             device float* params [[buffer(1)]],
                              uint id [[ thread_position_in_grid ]]) {
-    X[id] = fmax(0.0, X[id]);
+    float negativeSlope = params[0];
+    if (X[id] < 0) {
+        X[id] = negativeSlope * X[id];
+    }
 }
 
 kernel void max_pool(device float* result [[ buffer(0) ]],
@@ -149,9 +158,10 @@ kernel void avg_pool(device float* result [[ buffer(0) ]],
     thread float pool = 0.0;
     for (int ii = wstart; ii < wend; ++ii) {
         for (int jj = hstart; jj < hend; ++jj) {
-            pool += input[(n * channels * in_height + c * in_height + ii) * in_width + jj]/pool_size;
+            pool += input[(n * channels * in_height + c * in_height + ii) * in_width + jj];
         }
     }
+    pool /= pool_size;
     result[id] = pool;
 }
 
@@ -220,5 +230,26 @@ kernel void convolution_layer(device float* result [[ buffer(0) ]],
     result[id] = foo;
 }
 
+
+kernel void fc_layer(device float* result [[ buffer(0) ]],
+                              const device float* weights [[ buffer(1)]],
+                              const device MetalFCTensorDimensions* tensor_dimensions [[ buffer(2) ]],
+                              const device float* input [[ buffer(3) ]],
+                              const device float* bias [[ buffer(4) ]],
+                              uint id [[ thread_position_in_grid ]]) {
+    int input_dim = int(tensor_dimensions[0].cols);
+    int output_dim = int(tensor_dimensions[1].rows);
+    
+    int r = id / output_dim;
+    int c = id % output_dim;
+    
+    thread float foo = bias[c];
+    int base = r * input_dim;
+    for (int i = 0; i < input_dim; ++i) {
+        foo += input[base + i] * weights[c * input_dim + i];
+    }
+    
+    result[id] = foo;
+}
 
 

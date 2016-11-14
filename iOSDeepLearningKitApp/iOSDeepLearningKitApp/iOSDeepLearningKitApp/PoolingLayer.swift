@@ -14,14 +14,14 @@ func createPoolingLayerCached(layer: NSDictionary,
     inputBuffer: MTLBuffer,
     inputShape: [Float],
     metalCommandQueue: MTLCommandQueue, metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice,
-    inout pool_type_caches: [Dictionary<String,String>],
-    inout layer_data_caches: [Dictionary<String,MTLBuffer>],
+    pool_type_caches: inout [Dictionary<String,String>],
+    layer_data_caches: inout [Dictionary<String,MTLBuffer>],
     layer_number: Int,
     layer_string: String,
     caching_mode:Bool) -> (MTLBuffer, MTLCommandBuffer, [Float]) {
         
         print(" ==> createPoolingLayerCached")
-        let metalCommandBuffer = metalCommandQueue.commandBufferWithUnretainedReferences()
+        let metalCommandBuffer = metalCommandQueue.makeCommandBufferWithUnretainedReferences()
 //        let metalCommandBuffer = metalCommandQueue.commandBuffer()
         
         var params = NSDictionary()
@@ -64,7 +64,7 @@ func createPoolingLayerCached(layer: NSDictionary,
             h = ceil((inputShape[2] + 2.0 * pad - kernel_size) / stride) + 1.0
             w = ceil((Float(inputShape[3]) + 2.0 * pad - kernel_size) / stride) + 1.0
             shape = [inputShape[0], inputShape[1], h, w]
-            outputCount = shape.reduce(1, combine: *)
+            outputCount = shape.reduce(1, *)
             pool_width = Int(shape[2])
             pool_height = Int(shape[3])
             size_params = MetalShaderParameters(image_xdim: Float(inputShape[2]), image_ydim: Float(inputShape[3]),
@@ -79,10 +79,10 @@ func createPoolingLayerCached(layer: NSDictionary,
         }
         
         if pool_type == 1 {
-            outputBuffer = addPoolingCommandToCommandBufferCached(metalCommandBuffer, poolingMethod: "avg_pool", inputBuffer: inputBuffer, outputCount: Int(outputCount), size_params: size_params, pooling_params: pooling_params, metalDefaultLibrary: metalDefaultLibrary, metalDevice:metalDevice,
+            outputBuffer = addPoolingCommandToCommandBufferCached(commandBuffer: metalCommandBuffer, poolingMethod: "avg_pool", inputBuffer: inputBuffer, outputCount: Int(outputCount), size_params: size_params, pooling_params: pooling_params, metalDefaultLibrary: metalDefaultLibrary, metalDevice:metalDevice,
                 layer_data_caches: &layer_data_caches, layer_number: layer_number, layer_string: layer_string)
         } else {
-            outputBuffer = addPoolingCommandToCommandBufferCached(metalCommandBuffer, poolingMethod: "max_pool", inputBuffer: inputBuffer, outputCount: Int(outputCount), size_params: size_params, pooling_params: pooling_params,metalDefaultLibrary: metalDefaultLibrary, metalDevice: metalDevice,
+            outputBuffer = addPoolingCommandToCommandBufferCached(commandBuffer: metalCommandBuffer, poolingMethod: "max_pool", inputBuffer: inputBuffer, outputCount: Int(outputCount), size_params: size_params, pooling_params: pooling_params,metalDefaultLibrary: metalDefaultLibrary, metalDevice: metalDevice,
                 layer_data_caches: &layer_data_caches, layer_number: layer_number, layer_string: layer_string)
             
         }
@@ -102,7 +102,7 @@ func addPoolingCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
     size_params: MetalShaderParameters,
     pooling_params: MetalPoolingParameters,
     metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice,
-    inout layer_data_caches: [Dictionary<String,MTLBuffer>],
+    layer_data_caches: inout [Dictionary<String,MTLBuffer>],
     layer_number: Int,
     layer_string: String) -> MTLBuffer {
         
@@ -125,20 +125,20 @@ func addPoolingCommandToCommandBufferCached(commandBuffer: MTLCommandBuffer,
         //        let poolingParamMetalBuffer = createPoolingParametersMetalBuffer(pooling_params, metalDevice: metalDevice)
         let poolingParamMetalBuffer = createOrReusePoolingParametersMetalBuffer("poolingParamMetalBuffer", data: pooling_params, cache: &layer_data_caches, layer_number: layer_number, metalDevice: metalDevice)
         // Create Metal Compute Command Encoder and add input and output buffers to it
-        let metalComputeCommandEncoder = commandBuffer.computeCommandEncoder()
-        metalComputeCommandEncoder.setBuffer(outputMetalBuffer, offset: 0, atIndex: 0)
-        metalComputeCommandEncoder.setBuffer(inputBuffer, offset: 0, atIndex: 1)
-        metalComputeCommandEncoder.setBuffer(sizeParamMetalBuffer, offset: 0, atIndex: 2)
-        metalComputeCommandEncoder.setBuffer(poolingParamMetalBuffer, offset: 0, atIndex: 3)
+        let metalComputeCommandEncoder = commandBuffer.makeComputeCommandEncoder()
+        metalComputeCommandEncoder.setBuffer(outputMetalBuffer, offset: 0, at: 0)
+        metalComputeCommandEncoder.setBuffer(inputBuffer, offset: 0, at: 1)
+        metalComputeCommandEncoder.setBuffer(sizeParamMetalBuffer, offset: 0, at: 2)
+        metalComputeCommandEncoder.setBuffer(poolingParamMetalBuffer, offset: 0, at: 3)
         
         // Set the shader function that Metal will use
-        metalComputeCommandEncoder.setComputePipelineState(computePipelineState)
+        metalComputeCommandEncoder.setComputePipelineState(computePipelineState!)
         
         // Set up thread groups on GPU
         // TODO: check out http://metalbyexample.com/introduction-to-compute/
-        let threadsPerGroup = MTLSize(width:computePipelineState.threadExecutionWidth,height:1,depth:1)
+        let threadsPerGroup = MTLSize(width:(computePipelineState?.threadExecutionWidth)!,height:1,depth:1)
         // ensure at least 1 threadgroup
-        let numThreadgroups = MTLSize(width:(outputCount-1)/computePipelineState.threadExecutionWidth + 1, height:1, depth:1)
+        let numThreadgroups = MTLSize(width:(outputCount-1)/(computePipelineState?.threadExecutionWidth)! + 1, height:1, depth:1)
         metalComputeCommandEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
         
         // Finalize configuration

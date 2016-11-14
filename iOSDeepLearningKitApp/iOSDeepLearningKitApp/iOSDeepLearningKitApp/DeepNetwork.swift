@@ -9,7 +9,7 @@
 import Foundation
 import Metal
 
-public class DeepNetwork {
+open class DeepNetwork {
     var gpuCommandLayers: [MTLCommandBuffer] = []
     var namedDataLayers: [(String, MTLBuffer)] = []
     var imageBuffer: MTLBuffer!
@@ -28,7 +28,7 @@ public class DeepNetwork {
         deepNetworkAsDict = nil
     }
     
-    public func loadDeepNetworkFromJSON(networkName: String, inputImage: [Float], inputShape:[Float], caching_mode:Bool) {
+    open func loadDeepNetworkFromJSON(_ networkName: String, inputImage: [Float], inputShape:[Float], caching_mode:Bool) {
         print(" ==> loadDeepNetworkFromJSON(networkName=\(networkName)")
         if deepNetworkAsDict == nil {
             print("loading json file!")
@@ -54,8 +54,8 @@ public class DeepNetwork {
         metalDevice = MTLCreateSystemDefaultDevice()
         
         // Queue to handle an ordered list of command buffers
-        metalCommandQueue = metalDevice.newCommandQueue()
-        print("metalCommandQueue = \(unsafeAddressOf(metalCommandQueue))")
+        metalCommandQueue = metalDevice.makeCommandQueue()
+        print("metalCommandQueue = \(Unmanaged.passUnretained(metalCommandQueue).toOpaque())")
         
         // Access to Metal functions that are stored in Shaders.metal file, e.g. sigmoid()
         metalDefaultLibrary = metalDevice.newDefaultLibrary()
