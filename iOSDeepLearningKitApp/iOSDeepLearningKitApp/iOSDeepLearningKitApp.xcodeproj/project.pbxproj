@@ -32,6 +32,9 @@
 		9F48E0871DD7D08D003E112C /* FullyConnectedLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F48E0861DD7D08D003E112C /* FullyConnectedLayer.swift */; };
 		9F48E0891DD8B476003E112C /* simple.json in Resources */ = {isa = PBXBuildFile; fileRef = 9F48E0881DD8B476003E112C /* simple.json */; };
 		9F48E08B1DD8C832003E112C /* naive.json in Resources */ = {isa = PBXBuildFile; fileRef = 9F48E08A1DD8C832003E112C /* naive.json */; };
+		9F914FE41DDBF5E3000E7C92 /* BsonUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F914FE31DDBF5E3000E7C92 /* BsonUtil.swift */; };
+		9F914FE61DDBF609000E7C92 /* yolo_tiny.bson in Resources */ = {isa = PBXBuildFile; fileRef = 9F914FE51DDBF609000E7C92 /* yolo_tiny.bson */; };
+		9F914FE81DDC0740000E7C92 /* naive.bson in Resources */ = {isa = PBXBuildFile; fileRef = 9F914FE71DDC0740000E7C92 /* naive.bson */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -62,6 +65,9 @@
 		9F48E0861DD7D08D003E112C /* FullyConnectedLayer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FullyConnectedLayer.swift; sourceTree = "<group>"; };
 		9F48E0881DD8B476003E112C /* simple.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = simple.json; sourceTree = "<group>"; };
 		9F48E08A1DD8C832003E112C /* naive.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = naive.json; sourceTree = "<group>"; };
+		9F914FE31DDBF5E3000E7C92 /* BsonUtil.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BsonUtil.swift; sourceTree = "<group>"; };
+		9F914FE51DDBF609000E7C92 /* yolo_tiny.bson */ = {isa = PBXFileReference; lastKnownFileType = file; path = yolo_tiny.bson; sourceTree = "<group>"; };
+		9F914FE71DDC0740000E7C92 /* naive.bson */ = {isa = PBXFileReference; lastKnownFileType = file; path = naive.bson; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -98,6 +104,8 @@
 		67B14E2D1C6FE91400FCB69C /* iOSDeepLearningKitApp */ = {
 			isa = PBXGroup;
 			children = (
+				9F914FE71DDC0740000E7C92 /* naive.bson */,
+				9F914FE51DDBF609000E7C92 /* yolo_tiny.bson */,
 				9F48E08A1DD8C832003E112C /* naive.json */,
 				9F48E0881DD8B476003E112C /* simple.json */,
 				6B57D62D1C82E1460082387B /* ThirdParty */,
@@ -122,6 +130,7 @@
 				67B14E3A1C6FE91400FCB69C /* Info.plist */,
 				6B57D6381C831ED60082387B /* ImageUtilityFunctions.swift */,
 				9F48E0861DD7D08D003E112C /* FullyConnectedLayer.swift */,
+				9F914FE31DDBF5E3000E7C92 /* BsonUtil.swift */,
 			);
 			path = iOSDeepLearningKitApp;
 			sourceTree = "<group>";
@@ -195,7 +204,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				67B14E391C6FE91400FCB69C /* LaunchScreen.storyboard in Resources */,
+				9F914FE81DDC0740000E7C92 /* naive.bson in Resources */,
 				67B14E5B1C6FED2D00FCB69C /* pool1.json in Resources */,
+				9F914FE61DDBF609000E7C92 /* yolo_tiny.bson in Resources */,
 				67B14E591C6FED2800FCB69C /* nin_cifar10_full.json in Resources */,
 				67B14E5D1C6FED8A00FCB69C /* conv1.json in Resources */,
 				9F48E0891DD8B476003E112C /* simple.json in Resources */,
@@ -221,6 +232,7 @@
 				67B14E511C6FECF000FCB69C /* DeepNetwork+SetupNetworkFromDict.swift in Sources */,
 				67B14E311C6FE91400FCB69C /* ViewController.swift in Sources */,
 				67B14E2F1C6FE91400FCB69C /* AppDelegate.swift in Sources */,
+				9F914FE41DDBF5E3000E7C92 /* BsonUtil.swift in Sources */,
 				67B14E4F1C6FECE500FCB69C /* DeepNetwork+JSON.swift in Sources */,
 				67B14E531C6FED0300FCB69C /* ConvolutionLayer.swift in Sources */,
 				6B57D62F1C82E16F0082387B /* UIImageExtension.swift in Sources */,
