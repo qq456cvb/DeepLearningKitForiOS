@@ -44,6 +44,12 @@ func createMatrixShaderParametersMetalBuffer(_ params: MetalMatrixVectorParamete
     
 }
 
+func createReluParametersMetalBuffer(_ params: MetalReluParameters, metalDevice: MTLDevice) -> MTLBuffer {
+    var params = params
+    let byteLength = MemoryLayout<MetalReluParameters>.size
+    return metalDevice.makeBuffer(bytes: &params, length: byteLength, options: MTLResourceOptions())
+}
+
 func createPoolingParametersMetalBuffer(_ params: MetalPoolingParameters, metalDevice: MTLDevice) -> MTLBuffer {
     var params = params
     let byteLength = MemoryLayout<MetalPoolingParameters>.size

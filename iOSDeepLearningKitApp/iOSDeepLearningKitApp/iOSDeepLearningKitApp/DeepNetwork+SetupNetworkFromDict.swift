@@ -11,7 +11,7 @@ import Metal
 
 public extension DeepNetwork {
     
-    func setupNetworkFromDict(_ deepNetworkAsDict: NSDictionary, inputimage: MTLBuffer, inputshape: [Float], caching_mode:Bool) {
+    func setupNetworkFromDict(_ deepNetworkAsDict: Dictionary<String, Any>, inputimage: MTLBuffer, inputshape: [Float], caching_mode:Bool) {
         
         let start = Date()
 

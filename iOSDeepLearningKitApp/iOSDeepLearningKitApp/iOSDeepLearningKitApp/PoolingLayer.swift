@@ -55,7 +55,7 @@ func createPoolingLayerCached(layer: NSDictionary,
                 }
             }
             pooling_params = MetalPoolingParameters(kernel_size: kernel_size, pool_stride: stride, pad: pad)
-            pool_type = params["pool"] as! Int
+            pool_type = Int(params["pool"] as! Float)
             
             // STORE pool type in cache!
             pool_type_caches[layer_number]["pool_type"] = String(pool_type)

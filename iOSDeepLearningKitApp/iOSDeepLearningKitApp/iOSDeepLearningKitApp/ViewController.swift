@@ -36,7 +36,7 @@ class ViewController: UIViewController {
 //            randomimage[i] = Float(arc4random_uniform(1000))
 //        }
 //        
-        let imageShape:[Float] = [1.0, 3.0, 32.0, 32,0]
+        let imageShape:[Float] = [1.0, 3.0, 448.0, 448.0]
         let imageCount = Int(imageShape.reduce(1, *))
         
         let (r, g, b, _) = imageToMatrix(#imageLiteral(resourceName: "lena"))
@@ -50,14 +50,14 @@ class ViewController: UIViewController {
         let caching_mode = false
         
         let bundle = Bundle.main
-        let path = bundle.path(forResource: "naive", ofType: "bson")!
-        let dic = readBson(file: path)
+        let path = bundle.path(forResource: "yolo_tiny", ofType: "bson")!
+//        let dic = readBson(file: path)
         
         // 0. load network in network model
-//        deepNetwork.loadDeepNetworkFromJSON("nin_cifar10_full", inputImage: randomimage, inputShape: imageShape, caching_mode:caching_mode)
-//        
-//        // 1. classify image (of cat)
-//        deepNetwork.classify(randomimage)
+        deepNetwork.loadDeepNetworkFromBSON(path, inputImage: randomimage, inputShape: imageShape, caching_mode:caching_mode)
+        
+        // 1. classify image (of cat)
+        deepNetwork.classify(randomimage)
         
         
         // 2. reset deep network and classify random image

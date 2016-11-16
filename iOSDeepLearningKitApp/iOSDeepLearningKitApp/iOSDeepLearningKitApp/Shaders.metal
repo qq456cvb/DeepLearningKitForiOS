@@ -58,6 +58,11 @@ struct MetalPoolingParameters {
     float pad;
 };
 
+struct MetalReluParameters {
+    float negative_slope;
+    float pad;
+};
+
 struct MetalTensorDimensions {
     float n;
     float channels;
@@ -85,11 +90,11 @@ struct MetalConvolutionParameters {
 
 // Returns max(0, X[id]) + negative slope
 kernel void rectifier_linear(device float* X [[ buffer(0)]],
-                             device float* params [[buffer(1)]],
+                             constant MetalReluParameters* relu_params [[ buffer(1) ]],
                              uint id [[ thread_position_in_grid ]]) {
-    float negativeSlope = params[0];
-    if (X[id] < 0) {
-        X[id] = negativeSlope * X[id];
+    float negativeSlope = relu_params->negative_slope;
+    if (X[id] < 0.0) {
+            X[id] = negativeSlope * X[id];
     }
 }
 
@@ -195,6 +200,11 @@ kernel void im2col(const device float* convolution_input [[ buffer(0)]],
     int c_im = c / (kernel_size * kernel_size);
     if (h_pad >= 0 && h_pad < in_height && w_pad >= 0 && w_pad < in_width) {
         col_output[id] = convolution_input[(n * channels_in * in_height + c_im * in_height + h_pad) * in_width + w_pad];
+    } else {
+//        if (w_pad < 0 && h_pad >= 0) {
+//            col_output[id] = 1.0;
+//        }
+        col_output[id] = 0.0f;
     }
 }
 
@@ -203,7 +213,7 @@ kernel void convolution_layer(device float* result [[ buffer(0) ]],
                               const device float* weights [[ buffer(1)]],
                               const device MetalTensorDimensions* tensor_dimensions [[ buffer(2) ]],
                               const device float* col_output [[ buffer(3) ]],
-                              const device float* bias [[ buffer(4) ]],
+                              const device float* bia [[ buffer(4) ]],
                               uint id [[ thread_position_in_grid ]]) {
     //int num = int(tensor_dimensions[2].n);
     int channels_col = int(tensor_dimensions[2].channels);
@@ -218,11 +228,14 @@ kernel void convolution_layer(device float* result [[ buffer(0) ]],
     int a = (id / (height_out * width_out)) % channels_out;
     int b = id % (height_out * width_out);
     
-    thread float foo = bias[a];
+    float foo =  bia[a];
     
     for (int c = 0; c < channels_col; ++c) {
 //        result[id] += weights[a * channels_col + c] * col_output[(n * channels_col * width_col + c * width_col) * height_col + b];
-         foo += weights[a * channels_col + c] * col_output[(n * channels_col * width_col + c * width_col) * height_col + b];
+//        if (col_output[(n * channels_col * width_col + c * width_col) * height_col + b] == 0) {
+//            continue;
+//        }
+        foo += col_output[(n * channels_col * width_col + c * width_col) * height_col + b]  *  weights[a * channels_col + c];
     }
     
 //    result[id] += bias[a];

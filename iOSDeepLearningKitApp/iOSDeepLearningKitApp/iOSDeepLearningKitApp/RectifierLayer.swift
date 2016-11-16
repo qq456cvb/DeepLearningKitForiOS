@@ -12,10 +12,11 @@ import Metal
 func createRectifierLayer(_ layer:NSDictionary, inputBuffer: MTLBuffer, metalCommandQueue: MTLCommandQueue, metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice) -> (MTLBuffer,MTLCommandBuffer) {
     print(" ==> createrectifierlayer")
 //    let metalCommandBuffer = metalCommandQueue.commandBuffer()
-    let metalCommandBuffer = metalCommandQueue.makeCommandBufferWithUnretainedReferences()
+    let metalCommandBuffer = metalCommandQueue.makeCommandBuffer()
 
     var params = NSDictionary()
     var negativeSlope:Float = 0.0
+    var relu_params = MetalReluParameters(negative_slope: negativeSlope, pad: 0.0)
     
     if let relu_param = layer["relu_param"] {
         params = relu_param as! NSDictionary
@@ -23,8 +24,10 @@ func createRectifierLayer(_ layer:NSDictionary, inputBuffer: MTLBuffer, metalCom
             negativeSlope = val as! Float
         }
     }
+    
+    relu_params = MetalReluParameters(negative_slope: negativeSlope, pad: 0.0)
 
-    let result = addRectifierCommandToCommandBuffer(metalCommandBuffer, negativeSlope: negativeSlope, inputBuffer: inputBuffer,
+    let result = addRectifierCommandToCommandBuffer(metalCommandBuffer, relu_params: relu_params, inputBuffer: inputBuffer,
         metalDefaultLibrary: metalDefaultLibrary, metalDevice:metalDevice)
     //metalCommandBuffer.commit()
     
@@ -33,8 +36,11 @@ func createRectifierLayer(_ layer:NSDictionary, inputBuffer: MTLBuffer, metalCom
 }
 
 
-func addRectifierCommandToCommandBuffer(_ commandBuffer: MTLCommandBuffer, negativeSlope: Float, inputBuffer: MTLBuffer,
-    metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice) -> MTLBuffer {
+func addRectifierCommandToCommandBuffer(_ commandBuffer: MTLCommandBuffer,
+    relu_params: MetalReluParameters,
+    inputBuffer: MTLBuffer,
+    metalDefaultLibrary:MTLLibrary,
+    metalDevice:MTLDevice) -> MTLBuffer {
     
         print("==> addRectifierToCommandBuffer")
         
@@ -42,15 +48,13 @@ func addRectifierCommandToCommandBuffer(_ commandBuffer: MTLCommandBuffer, negat
     let (_, computePipelineState, _) = setupShaderInMetalPipeline("rectifier_linear", metalDefaultLibrary: metalDefaultLibrary,
         metalDevice: metalDevice)
     
-    var negative = createFloatNumbersArray(1)
-    negative[0] = negativeSlope
-    
-    let paramMetalBuffer = createFloatMetalBuffer(negative, metalDevice: metalDevice)
-    
+//    var relu_params = MetalReluParameters(negative_slope: Float(0.1), pad: Float(0.0))
+   let paramMetalBuffer = createReluParametersMetalBuffer(relu_params, metalDevice: metalDevice)
     // Create Metal Compute Command Encoder and add input and output buffers to it
     let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder()
     computeCommandEncoder.setBuffer(inputBuffer, offset: 0, at: 0)
     computeCommandEncoder.setBuffer(paramMetalBuffer, offset: 0, at: 1)
+//    computeCommandEncoder.setBuffer(paramMetalBuffer, offset: 0, at: 2)
     // Set the shader function that Metal will use
     computeCommandEncoder.setComputePipelineState(computePipelineState!)
     

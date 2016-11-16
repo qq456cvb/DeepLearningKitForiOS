@@ -30,22 +30,26 @@ public extension DeepNetwork {
             commandBuffer.commit()
         }
         
+//        gpuCommandLayers.first?.commit()
+//        gpuCommandLayers[1].commit()
+//        gpuCommandLayers[2].commit()
+        
         
         // wait until last layer in conv.net is finished
-        gpuCommandLayers.last!.waitUntilCompleted()
+        gpuCommandLayers.last?.waitUntilCompleted()
         
         print("Time to run network: \(Date().timeIntervalSince(start))")
         
         
         // TODO: fix hardcoding better..
-        var output =  [Float](repeating: 0.0, count: 1470)
+        var output =  [Float](repeating: 0, count: 1470)
         
         let (lastLayerName, lastMetalBuffer) = namedDataLayers.last!
         NSLog(lastLayerName)
         // modified
         let data = Data(bytesNoCopy: UnsafeMutableRawPointer(lastMetalBuffer.contents()),
-            count: output.count*MemoryLayout<Float>.size, deallocator: .none)
-        (data as NSData).getBytes(&output, length:(Int(output.count)) * MemoryLayout<Float>.size)
+            count: output.count*4, deallocator: .none)
+        (data as NSData).getBytes(&output, length:(Int(output.count)) * 4)
         print(output)
         
         let maxValue = output.max()

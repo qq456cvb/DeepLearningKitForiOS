@@ -16,7 +16,7 @@ open class DeepNetwork {
     var metalDevice: MTLDevice!
     var metalDefaultLibrary: MTLLibrary!
     var metalCommandQueue: MTLCommandQueue!
-    var deepNetworkAsDict: NSDictionary! // for debugging perhaps
+    var deepNetworkAsDict: Dictionary<String, Any>! // for debugging perhaps
     var layer_data_caches: [Dictionary<String,MTLBuffer>] = []
     var pool_type_caches: [Dictionary<String,String>] = []
     var dummy_image: [Float]!
@@ -28,11 +28,33 @@ open class DeepNetwork {
         deepNetworkAsDict = nil
     }
     
+    open func loadDeepNetworkFromBSON(_ networkName: String, inputImage: [Float], inputShape:[Float], caching_mode:Bool) {
+        print(" ==> loadDeepNetworkFromBSON(networkName=\(networkName)")
+        if deepNetworkAsDict == nil {
+            print("loading json file!")
+//            let dic = readBson(file: networkName)
+            deepNetworkAsDict = readBson(file: networkName)
+        }
+        
+        
+        // IMAGE INPUT HANDLING START - TODO: hardcode input dimensions,
+        // and have random data, and then later overwrite the first buffer
+        //let imageLayer = loadJSONFile("conv1")!
+        //let imageData: [Float] = imageLayer["input"] as! [Float]
+        print(inputImage.count)
+        let imageTensor = createMetalBuffer(inputImage, metalDevice: metalDevice)
+        
+        //         preLoadMetalShaders(metalDevice, metalDefaultLibrary:metalDefaultLibrary)
+        
+        setupNetworkFromDict(deepNetworkAsDict, inputimage: imageTensor, inputshape: inputShape, caching_mode:caching_mode )
+    }
+
+    
     open func loadDeepNetworkFromJSON(_ networkName: String, inputImage: [Float], inputShape:[Float], caching_mode:Bool) {
         print(" ==> loadDeepNetworkFromJSON(networkName=\(networkName)")
         if deepNetworkAsDict == nil {
             print("loading json file!")
-            deepNetworkAsDict = loadJSONFile(networkName)!
+            deepNetworkAsDict = loadJSONFile(networkName)! as! Dictionary<String, Any>
         }
         
         
