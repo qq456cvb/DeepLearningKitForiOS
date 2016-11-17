@@ -16,7 +16,6 @@ func createRectifierLayer(_ layer:NSDictionary, inputBuffer: MTLBuffer, metalCom
 
     var params = NSDictionary()
     var negativeSlope:Float = 0.0
-    var relu_params = MetalReluParameters(negative_slope: negativeSlope, pad: 0.0)
     
     if let relu_param = layer["relu_param"] {
         params = relu_param as! NSDictionary
@@ -25,7 +24,7 @@ func createRectifierLayer(_ layer:NSDictionary, inputBuffer: MTLBuffer, metalCom
         }
     }
     
-    relu_params = MetalReluParameters(negative_slope: negativeSlope, pad: 0.0)
+    let relu_params = MetalReluParameters(negative_slope: negativeSlope)
 
     let result = addRectifierCommandToCommandBuffer(metalCommandBuffer, relu_params: relu_params, inputBuffer: inputBuffer,
         metalDefaultLibrary: metalDefaultLibrary, metalDevice:metalDevice)

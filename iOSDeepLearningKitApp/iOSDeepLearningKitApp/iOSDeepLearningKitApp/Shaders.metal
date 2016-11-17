@@ -60,7 +60,6 @@ struct MetalPoolingParameters {
 
 struct MetalReluParameters {
     float negative_slope;
-    float pad;
 };
 
 struct MetalTensorDimensions {
@@ -90,9 +89,9 @@ struct MetalConvolutionParameters {
 
 // Returns max(0, X[id]) + negative slope
 kernel void rectifier_linear(device float* X [[ buffer(0)]],
-                             constant MetalReluParameters* relu_params [[ buffer(1) ]],
+                             const device MetalReluParameters* relu_params [[ buffer(1) ]],
                              uint id [[ thread_position_in_grid ]]) {
-    float negativeSlope = relu_params->negative_slope;
+    float negativeSlope = relu_params[0].negative_slope;
     if (X[id] < 0.0) {
             X[id] = negativeSlope * X[id];
     }

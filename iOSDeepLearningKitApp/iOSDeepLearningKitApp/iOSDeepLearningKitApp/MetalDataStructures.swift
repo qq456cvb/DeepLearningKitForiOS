@@ -65,7 +65,6 @@ public struct MetalFCTensorDimensions {
 
 public struct MetalReluParameters {
     let negative_slope: Float
-    let pad: Float
 }
 
 public struct MetalConvolutionParameters {

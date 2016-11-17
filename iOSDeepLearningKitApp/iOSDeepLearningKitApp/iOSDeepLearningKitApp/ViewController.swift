@@ -7,11 +7,23 @@
 //
 
 import UIKit
+import CoreGraphics
 
 class ViewController: UIViewController {
     
     var deepNetwork: DeepNetwork!
     
+    func resizeImage(image: UIImage, newWidth: CGFloat, newHeight: CGFloat) -> UIImage {
+        
+//        let scale = newWidth / image.size.width
+//        let newHeight = image.size.height * scale
+        UIGraphicsBeginImageContext(CGSize(width: newWidth, height: newHeight))
+        image.draw(in: CGRect(x: 0, y: 0, width: newWidth, height: newHeight))
+        let newImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        return newImage!
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,9 +51,14 @@ class ViewController: UIViewController {
         let imageShape:[Float] = [1.0, 3.0, 448.0, 448.0]
         let imageCount = Int(imageShape.reduce(1, *))
         
-        let (r, g, b, _) = imageToMatrix(#imageLiteral(resourceName: "lena"))
-        let image = b + g + r
-//
+        let resizeLena = resizeImage(image: #imageLiteral(resourceName: "lena"), newWidth: 448.0, newHeight: 448.0)
+        let (r, g, b, _) = imageToMatrix(resizeLena)
+        var image = b + g + r
+        for (i, _) in image.enumerated() {
+            image[i] /= 255
+        }
+        print(image.max()!)
+
         var randomimage = createFloatNumbersArray(imageCount)
         for i in 0..<randomimage.count {
             randomimage[i] = Float(1.0)
@@ -54,10 +71,10 @@ class ViewController: UIViewController {
 //        let dic = readBson(file: path)
         
         // 0. load network in network model
-        deepNetwork.loadDeepNetworkFromBSON(path, inputImage: randomimage, inputShape: imageShape, caching_mode:caching_mode)
+        deepNetwork.loadDeepNetworkFromBSON(path, inputImage: image, inputShape: imageShape, caching_mode:caching_mode)
         
         // 1. classify image (of cat)
-        deepNetwork.classify(randomimage)
+        deepNetwork.yoloDetect(image)
         
         
         // 2. reset deep network and classify random image
