@@ -8,12 +8,23 @@
 
 import Foundation
 import Metal
+import UIKit
 
 public extension DeepNetwork {
     // e.g. 32x32x3 for CIFAR-10/100
     // as [1.0, 3.0, 32.0, 32.0]
     
-    public func yoloDetect(_ flattenedTensorWithImage: [Float]) {
+    func iou(box1: CGRect, box2 : CGRect) -> Float {
+        let tb = min(box1.maxX, box2.maxX) - max(box1.minX, box2.minX)
+        let lr = min(box1.maxY, box2.maxY) - max(box1.minY, box2.minY)
+        if tb < 0 || lr < 0 {
+            return 0.0
+        }
+        let intersection = tb * lr
+        return Float(intersection) / Float(box1.width * box1.height + box2.width * box2.height - intersection)
+    }
+    
+    public func yoloDetect(_ flattenedTensorWithImage: [Float], imageView: UIImageView) {
         let start = Date()
         
         for commandBuffer in gpuCommandLayers {
@@ -48,7 +59,12 @@ public extension DeepNetwork {
         gpuCommandLayers = []
         
         let threshold: Float = 0.2
+        let iou_threshold: Float = 0.5
+        var candidateBox = [CGRect]()
+        var probs = [Float]()
+        let image = imageView.image!
         
+        print("image size: \(image.size.width) * \(image.size.height)")
         for x in 0...6 {
             for y in 0...6 {
                 for i in 0...1 {
@@ -66,11 +82,57 @@ public extension DeepNetwork {
                     
                     if max > threshold {
                         print("find one class: \(classes[max_class])")
+                        probs.append(max)
+                        
+                        let box_x = (output[1078 + x * 7 * 2 * 4 + y * 2 * 4 + i * 4] + Float(x)) / 7.0 * Float(image.size.width)
+                        let box_y = (output[1078 + x * 7 * 2 * 4 + y * 2 * 4 + i * 4 + 1] + Float(y)) / 7.0 * Float(image.size.height)
+                        print(output[1078 + x * 7 * 2 * 4 + y * 2 * 4 + i * 4 + 2])
+                        print(output[1078 + x * 7 * 2 * 4 + y * 2 * 4 + i * 4 + 3])
+                        let box_width = pow(output[1078 + x * 7 * 2 * 4 + y * 2 * 4 + i * 4 + 2], 2) * Float(image.size.width)
+                        let box_height = pow(output[1078 + x * 7 * 2 * 4 + y * 2 * 4 + i * 4 + 3], 2) * Float(image.size.height)
+                        
+                        print(box_x)
+                        print(box_y)
+                        print(box_width)
+                        print(box_height)
+                        candidateBox.append(CGRect(x: CGFloat(box_x - box_width / 2), y: CGFloat(box_y - box_height / 2), width: CGFloat(box_width), height: CGFloat(box_height)))
+
                     }
                 }
             }
         }
         
+        if candidateBox.count == 0 {
+            return
+        }
+        
+        candidateBox = candidateBox.sorted(by: { (rect1:CGRect, rect2:CGRect) -> Bool in
+            let idx1 = candidateBox.index(of: rect1)
+            let idx2 = candidateBox.index(of: rect2)
+            return probs[idx1!] > probs[idx2!]
+        })
+        
+        for i in 0...(candidateBox.count-1) {
+            if (probs[i] == 0.0 || i == candidateBox.count-1) {
+                continue
+            }
+            for j in (i+1)...(candidateBox.count-1) {
+                if iou(box1: candidateBox[i], box2: candidateBox[j]) > iou_threshold {
+//                    probs[j] = 0.0
+                }
+            }
+            UIGraphicsBeginImageContextWithOptions(image.size, true, 0)
+            image.draw(at: CGPoint(x: 0, y: 0))
+            let p = UIBezierPath()
+            p.move(to: CGPoint(x: candidateBox[i].minX, y: candidateBox[i].minY))
+            p.addLine(to: CGPoint(x: candidateBox[i].width, y: candidateBox[i].height))
+            UIColor.red.set()
+            p.lineWidth = 10.0
+            p.stroke()
+            p.fill()
+            imageView.image = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+        }
         // return index
 //        return Float(output.index(of: output.max()!)!)
     }

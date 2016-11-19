@@ -212,7 +212,7 @@ kernel void convolution_layer(device float* result [[ buffer(0) ]],
                               const device float* weights [[ buffer(1)]],
                               const device MetalTensorDimensions* tensor_dimensions [[ buffer(2) ]],
                               const device float* col_output [[ buffer(3) ]],
-                              const device float* bia [[ buffer(4) ]],
+                              const device float* bias [[ buffer(4) ]],
                               uint id [[ thread_position_in_grid ]]) {
     //int num = int(tensor_dimensions[2].n);
     int channels_col = int(tensor_dimensions[2].channels);
@@ -227,17 +227,62 @@ kernel void convolution_layer(device float* result [[ buffer(0) ]],
     int a = (id / (height_out * width_out)) % channels_out;
     int b = id % (height_out * width_out);
     
-    float foo =  bia[a];
+    float foo =  bias[a];
     
     for (int c = 0; c < channels_col; ++c) {
-//        result[id] += weights[a * channels_col + c] * col_output[(n * channels_col * width_col + c * width_col) * height_col + b];
-//        if (col_output[(n * channels_col * width_col + c * width_col) * height_col + b] == 0) {
-//            continue;
-//        }
         foo += col_output[(n * channels_col * width_col + c * width_col) * height_col + b]  *  weights[a * channels_col + c];
     }
     
-//    result[id] += bias[a];
+    result[id] = foo;
+}
+
+// Tensor dimensions = { input_dimensions, weight_dimensions, col_dimensions, result_dimensions }
+kernel void fast_convolution_layer(device float* result [[ buffer(0) ]],
+                              const device float* weights [[ buffer(1)]],
+                              const device MetalTensorDimensions* tensor_dimensions [[ buffer(2) ]],
+                              const device float* input [[ buffer(3) ]],
+                              const device float* bias [[ buffer(4) ]],
+                              uint id [[ thread_position_in_grid ]]) {
+    //int num = int(tensor_dimensions[2].n);
+    int channels_in = int(tensor_dimensions[0].channels);
+    int width_in = int(tensor_dimensions[0].width);
+    int height_in = int(tensor_dimensions[0].height);
+    
+    int channels_out = int(tensor_dimensions[3].channels);
+    int width_out = int(tensor_dimensions[3].width);
+    int height_out = int(tensor_dimensions[3].height);
+    
+    int width_kernel = int(tensor_dimensions[1].width);
+    int height_kernel = int(tensor_dimensions[1].height);
+    int h_offset = (height_in - height_out) / 2;
+    int w_offset = (width_in - width_out) / 2;
+    
+    int n = id / (channels_out * height_out * width_out);
+    int a = (id / (height_out * width_out)) % channels_out;
+    int b = id % (height_out * width_out);
+    int result_width = w_offset + (b % width_out);
+    int result_height = h_offset + (b / width_out);
+    
+    float foo =  bias[a];
+    
+    // TODO(Neil): add SIMD 4-way operations to speed up further
+    // TODO(Neil): avoid 3 stack loop
+    for (int c = 0; c < channels_in; c++) {
+        for (int kh = -height_kernel / 2; kh <= height_kernel / 2; kh++) {
+            for (int kw = -width_kernel / 2; kw <= width_kernel / 2; kw++) {
+                float val = 0;
+                int w = result_width + kw;
+                int h = result_height + kh;
+                
+                // TODO: extend original image a little bit to avoid checking here
+                if (w >= 0 && w < width_in && h >= 0 && h < height_in) {
+                    val = input[(n * channels_in * width_in + c * width_in) * height_in + h * width_in + w];
+                }
+                foo += val * weights[(a * channels_in * width_kernel + c * width_kernel) * height_kernel + (kh + height_kernel / 2) * width_kernel + kw + width_kernel / 2];
+            }
+        }
+    }
+    
     
     result[id] = foo;
 }

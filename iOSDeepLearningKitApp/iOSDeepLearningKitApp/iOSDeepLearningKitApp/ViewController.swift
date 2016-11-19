@@ -9,9 +9,15 @@
 import UIKit
 import CoreGraphics
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
+    @IBOutlet weak var chooseBtn: UIButton!
+    @IBOutlet weak var imageView: UIImageView!
     var deepNetwork: DeepNetwork!
+    let imagePicker = UIImagePickerController()
+    let path = Bundle.main.path(forResource: "yolo_tiny", ofType: "bson")!
+    let imageShape:[Float] = [1.0, 3.0, 448.0, 448.0]
+    let caching_mode = false
     
     func resizeImage(image: UIImage, newWidth: CGFloat, newHeight: CGFloat) -> UIImage {
         
@@ -25,9 +31,41 @@ class ViewController: UIViewController {
         return newImage!
     }
     
+    @IBAction func imageChoosen(_ sender: Any) {
+        imagePicker.allowsEditing = false
+        imagePicker.sourceType = .photoLibrary
+        
+        present(imagePicker, animated: true, completion: nil)
+    }
+    
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any])  {
+        print(info.debugDescription)
+        if let pickedImage = info[UIImagePickerControllerOriginalImage] as? UIImage {
+//            imageView.contentMode = .scaleAspectFit
+            imageView.image = pickedImage
+        }
+        
+        let resized = resizeImage(image: imageView.image!, newWidth: CGFloat(imageShape[3]), newHeight: CGFloat(imageShape[2]))
+        
+        let (r, g, b, _) = imageToMatrix(resized)
+        var image = b + g + r
+        for (i, _) in image.enumerated() {
+            image[i] /= 255
+        }
+        // 0. load network in network model
+        deepNetwork.loadDeepNetworkFromBSON(path, inputImage: image, inputShape: imageShape, caching_mode:caching_mode)
+        
+        // 1. classify image (of cat)
+        deepNetwork.yoloDetect(image, imageView: imageView)
+        
+        dismiss(animated: true, completion: nil)
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        imagePicker.delegate = self
+        imageView.image = #imageLiteral(resourceName: "lena")
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -39,43 +77,38 @@ class ViewController: UIViewController {
 //        let image: [Float] = conv1Layer["input"] as! [Float]
 //        
 //        _ = UIImage(named: "lena")
-        // shows a tiny (32x32) CIFAR 10 image on screen
+//         //shows a tiny (32x32) CIFAR 10 image on screen
 //        showCIFARImage(image)
-//        
-//        
+        
+        
 //        var randomimage = createFloatNumbersArray(image.count)
 //        for i in 0..<randomimage.count {
 //            randomimage[i] = Float(arc4random_uniform(1000))
 //        }
+        
+        
+// **********************comment out below to debug at launch time ******************//
+//        let imageCount = Int(imageShape.reduce(1, *))
 //        
-        let imageShape:[Float] = [1.0, 3.0, 448.0, 448.0]
-        let imageCount = Int(imageShape.reduce(1, *))
-        
-        let resizeLena = resizeImage(image: #imageLiteral(resourceName: "lena"), newWidth: 448.0, newHeight: 448.0)
-        let (r, g, b, _) = imageToMatrix(resizeLena)
-        var image = b + g + r
-        for (i, _) in image.enumerated() {
-            image[i] /= 255
-        }
-        print(image.max()!)
-
-        var randomimage = createFloatNumbersArray(imageCount)
-        for i in 0..<randomimage.count {
-            randomimage[i] = Float(1.0)
-        }
-        
-        let caching_mode = false
-        
-        let bundle = Bundle.main
-        let path = bundle.path(forResource: "yolo_tiny", ofType: "bson")!
-//        let dic = readBson(file: path)
-        
-        // 0. load network in network model
-        deepNetwork.loadDeepNetworkFromBSON(path, inputImage: image, inputShape: imageShape, caching_mode:caching_mode)
-        
-        // 1. classify image (of cat)
-        deepNetwork.yoloDetect(image)
-        
+//        let resizeLena = resizeImage(image: #imageLiteral(resourceName: "lena"), newWidth: 448.0, newHeight: 448.0)
+//        let (r, g, b, _) = imageToMatrix(resizeLena)
+//        var image = b + g + r
+//        for (i, _) in image.enumerated() {
+//            image[i] /= 255
+//        }
+//        print(image.max()!)
+//
+//        var randomimage = createFloatNumbersArray(imageCount)
+//        for i in 0..<randomimage.count {
+//            randomimage[i] = Float(1.0)
+//        }
+//        
+//        // 0. load network in network model
+//        deepNetwork.loadDeepNetworkFromBSON(path, inputImage: image, inputShape: imageShape, caching_mode:caching_mode)
+//        
+//        // 1. classify image (of cat)
+//        deepNetwork.yoloDetect(image, imageView: imageView)
+// **********************comment out above to debug at launch time ******************//
         
         // 2. reset deep network and classify random image
 //        deepNetwork.loadDeepNetworkFromJSON("nin_cifar10_full", inputImage: randomimage, inputShape: imageShape,caching_mode:caching_mode)

@@ -121,13 +121,77 @@ func createConvolutionLayerCached(_ layer: NSDictionary,
         }
         
         
-        let resultBuffer = addConvolutionCommandToCommandBufferCached(metalCommandBuffer, inputBuffer: inputBuffer, im2ColCount: col_output.count, weights: weights, outputCount: outputCount, convolution_params: convolution_params, tensor_dimensions: tensor_dimensions, bias: bias_data, metalDefaultLibrary: metalDefaultLibrary, metalDevice:metalDevice, layer_data_caches: &layer_data_caches, layer_number: layer_number,layer_string: layer_string, caching_mode: caching_mode)
+//        let resultBuffer = addConvolutionCommandToCommandBufferCached(metalCommandBuffer, inputBuffer: inputBuffer, im2ColCount: col_output.count, weights: weights, outputCount: outputCount, convolution_params: convolution_params, tensor_dimensions: tensor_dimensions, bias: bias_data, metalDefaultLibrary: metalDefaultLibrary, metalDevice:metalDevice, layer_data_caches: &layer_data_caches, layer_number: layer_number,layer_string: layer_string, caching_mode: caching_mode)
         //metalCommandBuffer.commit()
         
-        
+        let resultBuffer = addFastConvolutionCommandToCommandBufferCached(metalCommandBuffer, inputBuffer: inputBuffer, weights: weights, outputCount: outputCount, convolution_params: convolution_params, tensor_dimensions: tensor_dimensions, bias: bias_data, metalDefaultLibrary: metalDefaultLibrary, metalDevice:metalDevice, layer_data_caches: &layer_data_caches, layer_number: layer_number,layer_string: layer_string, caching_mode: caching_mode)
         
         return (resultBuffer, metalCommandBuffer, result_shape)
         
+}
+
+func addFastConvolutionCommandToCommandBufferCached(_ commandBuffer: MTLCommandBuffer,
+                                                inputBuffer: MTLBuffer,
+                                                weights: [Float],
+                                                outputCount: Int,
+                                                convolution_params: MetalConvolutionParameters,
+                                                tensor_dimensions: [MetalTensorDimensions],
+                                                bias: [Float],
+                                                metalDefaultLibrary:MTLLibrary, metalDevice:MTLDevice,
+                                                layer_data_caches: inout [Dictionary<String,MTLBuffer>],
+                                                layer_number: Int,
+                                                layer_string: String, caching_mode:Bool) -> MTLBuffer {
+    _ = Date()
+    
+    print("before output and col_output")
+    
+    var output:[Float] = []
+    
+    if(!caching_mode) {
+        output = createFloatNumbersArray(outputCount)
+    }
+    
+    print("before setupshaderinpipeline")
+    
+    let (_, fastCovComputePipelineState, _) = setupShaderInMetalPipeline("fast_convolution_layer", metalDefaultLibrary: metalDefaultLibrary, metalDevice: metalDevice)
+    
+    let resultMetalBuffer = createOrReuseFloatMetalBuffer("resultMetalBuffer", data: output, cache: &layer_data_caches, layer_number: layer_number, metalDevice: metalDevice)
+    
+    print("after resultmetalbuffer")
+    
+    let weightMetalBuffer = createOrReuseFloatMetalBuffer("weightMetalBuffer", data: weights, cache: &layer_data_caches, layer_number:layer_number, metalDevice: metalDevice)
+    
+    
+//    let convolutionParamsMetalBuffer = createOrReuseConvolutionParametersMetalBuffer("convolutionParamsMetalBuffer", data: convolution_params, cache: &layer_data_caches, layer_number: layer_number, metalDevice: metalDevice)
+    
+    let tensorDimensionsMetalBuffer = createOrReuseTensorDimensionsVectorMetalBuffer("tensorDimensionsMetalBuffer", data: tensor_dimensions, cache: &layer_data_caches, layer_number: layer_number, metalDevice: metalDevice)
+    
+    let biasMetalBuffer = createOrReuseFloatMetalBuffer("bias", data: bias, cache: &layer_data_caches, layer_number:layer_number, metalDevice: metalDevice)
+    
+    
+    // Create Metal compute command encoder for im2col
+    let metalComputeCommandEncoder = commandBuffer.makeComputeCommandEncoder()
+    metalComputeCommandEncoder.setBuffer(resultMetalBuffer, offset: 0, at: 0)
+    metalComputeCommandEncoder.setBuffer(weightMetalBuffer, offset: 0, at: 1)
+    metalComputeCommandEncoder.setBuffer(tensorDimensionsMetalBuffer, offset: 0, at: 2)
+    metalComputeCommandEncoder.setBuffer(inputBuffer, offset: 0, at: 3)
+    metalComputeCommandEncoder.setBuffer(biasMetalBuffer, offset: 0, at: 4)
+    //metalComputeCommandEncoder.setComputePipelineState(im2colComputePipelineState)
+    
+    
+    metalComputeCommandEncoder.setComputePipelineState(fastCovComputePipelineState!)
+    
+    // Set up thread groups on GPU
+    // TODO: check out http://metalbyexample.com/introduction-to-compute/
+    let threadsPerGroup = MTLSize(width:(fastCovComputePipelineState?.threadExecutionWidth)!,height:1,depth:1)
+    // ensure at least 1 threadgroup
+    let numThreadgroups = MTLSize(width:(outputCount-1)/(fastCovComputePipelineState?.threadExecutionWidth)! + 1, height:1, depth:1)
+    metalComputeCommandEncoder.dispatchThreadgroups(numThreadgroups, threadsPerThreadgroup: threadsPerGroup)
+    
+    // Finalize configuration
+    metalComputeCommandEncoder.endEncoding()
+    
+    return resultMetalBuffer
 }
 
 func addConvolutionCommandToCommandBufferCached(_ commandBuffer: MTLCommandBuffer,
