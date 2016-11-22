@@ -47,6 +47,8 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
         
         let resized = resizeImage(image: imageView.image!, newWidth: CGFloat(imageShape[3]), newHeight: CGFloat(imageShape[2]))
         
+        print(resized.size.width)
+        
         let (r, g, b, _) = imageToMatrix(resized)
         var image = b + g + r
         for (i, _) in image.enumerated() {
@@ -108,6 +110,9 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
 //        
 //        // 1. classify image (of cat)
 //        deepNetwork.yoloDetect(image, imageView: imageView)
+        
+//        deepNetwork.loadDeepNetworkFromBSON(path, inputImage: randomimage, inputShape: imageShape, caching_mode:caching_mode)
+//        deepNetwork.classify(randomimage)
 // **********************comment out above to debug at launch time ******************//
         
         // 2. reset deep network and classify random image
