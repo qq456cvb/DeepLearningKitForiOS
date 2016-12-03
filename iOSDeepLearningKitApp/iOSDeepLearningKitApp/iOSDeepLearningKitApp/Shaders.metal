@@ -229,8 +229,19 @@ kernel void convolution_layer(device float* result [[ buffer(0) ]],
     
     float foo =  bias[a];
     
-    for (int c = 0; c < channels_col; ++c) {
-        foo += col_output[(n * channels_col * width_col + c * width_col) * height_col + b]  *  weights[a * channels_col + c];
+    int base = n * channels_col * width_col * height_col + b;
+    int base_w = a * channels_col;
+    int size = width_col * height_col;
+    for (int c = 0; c < channels_col; c+=4) {
+        float4 out = float4(col_output[c * size + base],
+                      col_output[(c+1) * size + base],
+                      col_output[(c+2) * size + base],
+                      col_output[(c+3) * size + base]);
+        float4 w = float4(weights[base_w+c],
+                    weights[base_w+c+1],
+                    weights[base_w+c+2],
+                    weights[base_w+c+3]);
+        foo += dot(out, w);
     }
     
     result[id] = foo;

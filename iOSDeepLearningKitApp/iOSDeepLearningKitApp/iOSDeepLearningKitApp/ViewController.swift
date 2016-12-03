@@ -18,6 +18,7 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
     let path = Bundle.main.path(forResource: "yolo_tiny", ofType: "bson")!
     let imageShape:[Float] = [1.0, 3.0, 448.0, 448.0]
     let caching_mode = false
+    var loaded = false
     
     func resizeImage(image: UIImage, newWidth: CGFloat, newHeight: CGFloat) -> UIImage {
         
@@ -54,8 +55,8 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
         for (i, _) in image.enumerated() {
             image[i] /= 255
         }
-        // 0. load network in network model
         deepNetwork.loadDeepNetworkFromBSON(path, inputImage: image, inputShape: imageShape, caching_mode:caching_mode)
+
         
         // 1. classify image (of cat)
         deepNetwork.yoloDetect(image, imageView: imageView)
@@ -68,11 +69,24 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
         // Do any additional setup after loading the view, typically from a nib.
         imagePicker.delegate = self
         imageView.image = #imageLiteral(resourceName: "lena")
+        // 0. load network in network model
+        
+//        let resized = resizeImage(image: #imageLiteral(resourceName: "lena"), newWidth: CGFloat(imageShape[3]), newHeight: CGFloat(imageShape[2]))
+//        
+//        print(resized.size.width)
+//        
+//        let (r, g, b, _) = imageToMatrix(resized)
+//        var image = b + g + r
+//        for (i, _) in image.enumerated() {
+//            image[i] /= 255
+//        }
+//        
+        deepNetwork = DeepNetwork()
     }
     
     override func viewDidAppear(_ animated: Bool) {
         
-        deepNetwork = DeepNetwork()
+       
         
         // conv1.json contains a cifar 10 image of a cat
 //        let conv1Layer = deepNetwork.loadJSONFile("conv1")!

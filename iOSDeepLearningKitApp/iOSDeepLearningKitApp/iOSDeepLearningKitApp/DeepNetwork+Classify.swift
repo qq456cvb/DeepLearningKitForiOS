@@ -33,6 +33,11 @@ public extension DeepNetwork {
     public func yoloDetect(_ flattenedTensorWithImage: [Float], imageView: UIImageView) {
         let start = Date()
         
+//        let inputTensor = createMetalBuffer(flattenedTensorWithImage, metalDevice:metalDevice)
+        
+//        flattenedTensorWithImage.
+//        namedDataLayers[0].1.contents().copyBytes(from: flattenedTensorWithImage, count: flattenedTensorWithImage.count * 4)
+        
         for commandBuffer in gpuCommandLayers {
             commandBuffer.commit()
         }
@@ -153,6 +158,27 @@ public extension DeepNetwork {
                 }
             }
             
+            // set the text color to dark gray
+            let fieldColor: UIColor = UIColor.red
+            
+            // set the font to Helvetica Neue 18
+            let fieldFont = UIFont(name: "Helvetica Neue", size: image.size.width / 30.0)
+            
+            // set the line spacing to 6
+            let paraStyle = NSMutableParagraphStyle()
+            paraStyle.lineSpacing = 6.0
+            
+            // set the Obliqueness to 0.1
+            let skew = 0.1
+            
+            let attributes: NSDictionary = [
+                NSForegroundColorAttributeName: fieldColor,
+                NSParagraphStyleAttributeName: paraStyle,
+                NSObliquenessAttributeName: skew,
+                NSFontAttributeName: fieldFont!
+            ]
+            
+            predictions[i].cls.draw(in: CGRect(x:predictions[i].rect.origin.x + image.size.width / 100.0, y:predictions[i].rect.origin.y, width: predictions[i].rect.width, height: image.size.width / 30.0), withAttributes: attributes as? [String : Any])
             
             let p = UIBezierPath()
             p.move(to: CGPoint(x: predictions[i].rect.origin.x, y: predictions[i].rect.origin.y))
