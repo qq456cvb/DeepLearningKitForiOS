@@ -8,8 +8,30 @@
 
 import UIKit
 import CoreGraphics
+import AVFoundation
 
-class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+public class AtomicBoolean {
+    private var val: UInt8 = 0
+    
+    public init(initialValue: Bool) {
+        self.val = (initialValue == false ? 0 : 1)
+    }
+    
+    public func getAndSet(value: Bool) -> Bool {
+        if value {
+            return  OSAtomicTestAndSet(7, &val)
+        } else {
+            return  OSAtomicTestAndClear(7, &val)
+        }
+    }
+    
+    public func get() -> Bool {
+        return val != 0
+    }
+}
+
+class ViewController: UIViewController, UIImagePickerControllerDelegate,
+                                    UINavigationControllerDelegate, AVCaptureVideoDataOutputSampleBufferDelegate {
     
     @IBOutlet weak var chooseBtn: UIButton!
     @IBOutlet weak var imageView: UIImageView!
@@ -17,13 +39,106 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
     let imagePicker = UIImagePickerController()
     let path = Bundle.main.path(forResource: "yolo_tiny", ofType: "bson")!
     let imageShape:[Float] = [1.0, 3.0, 448.0, 448.0]
+    let cameraSession = AVCaptureSession()
     let caching_mode = false
     var loaded = false
+    var frame_done  = AtomicBoolean.init(initialValue: true)
+    
+    @IBAction func start(_ sender: Any) {
+        
+        cameraSession.sessionPreset = AVCaptureSessionPresetMedium
+        
+        let captureDevice = AVCaptureDevice.defaultDevice(withMediaType: AVMediaTypeVideo) as AVCaptureDevice
+        do {
+            let deviceInput = try AVCaptureDeviceInput(device: captureDevice)
+            
+            cameraSession.beginConfiguration() // 1
+            
+            if (cameraSession.canAddInput(deviceInput) == true) {
+                cameraSession.addInput(deviceInput)
+            }
+            
+            let dataOutput = AVCaptureVideoDataOutput() // 2
+            
+            dataOutput.videoSettings = [(kCVPixelBufferPixelFormatTypeKey as NSString) : NSNumber(value: kCVPixelFormatType_32BGRA as UInt32)] // 3
+            
+            dataOutput.alwaysDiscardsLateVideoFrames = true // 4
+            
+            if (cameraSession.canAddOutput(dataOutput) == true) {
+                cameraSession.addOutput(dataOutput)
+            }
+            
+            cameraSession.commitConfiguration() //5
+            
+            let queue = DispatchQueue(label: "video") // 6
+            dataOutput.setSampleBufferDelegate(self, queue: queue) // 7
+            
+            cameraSession.startRunning()
+            
+        }
+        catch let error as NSError {
+            NSLog("\(error), \(error.localizedDescription)")
+        }
+    }
+    
+    func imageFromSampleBuffer(sampleBuffer : CMSampleBuffer) -> UIImage
+    {
+        // Get a CMSampleBuffer's Core Video image buffer for the media data
+        let  imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+        // Lock the base address of the pixel buffer
+        CVPixelBufferLockBaseAddress(imageBuffer!, CVPixelBufferLockFlags.readOnly);
+        
+        
+        // Get the number of bytes per row for the pixel buffer
+        let baseAddress = CVPixelBufferGetBaseAddress(imageBuffer!);
+        
+        // Get the number of bytes per row for the pixel buffer
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer!);
+        // Get the pixel buffer width and height
+        let width = CVPixelBufferGetWidth(imageBuffer!);
+        let height = CVPixelBufferGetHeight(imageBuffer!);
+        
+        // Create a device-dependent RGB color space
+        let colorSpace = CGColorSpaceCreateDeviceRGB();
+        
+        // Create a bitmap graphics context with the sample buffer data
+        var bitmapInfo: UInt32 = CGBitmapInfo.byteOrder32Little.rawValue
+        bitmapInfo |= CGImageAlphaInfo.premultipliedFirst.rawValue & CGBitmapInfo.alphaInfoMask.rawValue
+        //let bitmapInfo: UInt32 = CGBitmapInfo.alphaInfoMask.rawValue
+        let context = CGContext.init(data: baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: bitmapInfo)
+        // Create a Quartz image from the pixel data in the bitmap graphics context
+        let quartzImage = context?.makeImage();
+        // Unlock the pixel buffer
+        CVPixelBufferUnlockBaseAddress(imageBuffer!, CVPixelBufferLockFlags.readOnly);
+        
+        // Create an image object from the Quartz image
+        let image = UIImage.init(cgImage: quartzImage!, scale: 1.0, orientation: .down);
+        
+        return (image);
+    }
+    
+    func captureOutput(_ captureOutput: AVCaptureOutput!, didOutputSampleBuffer sampleBuffer: CMSampleBuffer!, from connection: AVCaptureConnection!) {
+        if frame_done.get() {
+            _ = self.frame_done.getAndSet(value: false)
+            let captured = self.imageFromSampleBuffer(sampleBuffer: sampleBuffer)
+            DispatchQueue.global().async {
+                let resized = self.resizeImage(image: captured, newWidth: CGFloat(self.imageShape[3]), newHeight: CGFloat(self.imageShape[2]))
+                
+                let (r, g, b, _) = imageToMatrix(resized)
+                var image = b + g + r
+                for (i, _) in image.enumerated() {
+                    image[i] /= 255
+                }
+                self.deepNetwork.loadDeepNetworkFromBSON(self.path, inputImage: image, inputShape: self.imageShape, caching_mode:self.caching_mode)
+                
+                // 1. classify image (of cat)
+                self.deepNetwork.yoloDetect(captured, imageView: self.imageView)
+                _ = self.frame_done.getAndSet(value: true)
+            }
+        }
+    }
     
     func resizeImage(image: UIImage, newWidth: CGFloat, newHeight: CGFloat) -> UIImage {
-        
-//        let scale = newWidth / image.size.width
-//        let newHeight = image.size.height * scale
         UIGraphicsBeginImageContext(CGSize(width: newWidth, height: newHeight))
         image.draw(in: CGRect(x: 0, y: 0, width: newWidth, height: newHeight))
         let newImage = UIGraphicsGetImageFromCurrentImageContext()
@@ -46,20 +161,21 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
             imageView.image = pickedImage
         }
         
-        let resized = resizeImage(image: imageView.image!, newWidth: CGFloat(imageShape[3]), newHeight: CGFloat(imageShape[2]))
-        
-        print(resized.size.width)
-        
-        let (r, g, b, _) = imageToMatrix(resized)
-        var image = b + g + r
-        for (i, _) in image.enumerated() {
-            image[i] /= 255
-        }
-        deepNetwork.loadDeepNetworkFromBSON(path, inputImage: image, inputShape: imageShape, caching_mode:caching_mode)
-
-        
-        // 1. classify image (of cat)
-        deepNetwork.yoloDetect(image, imageView: imageView)
+//        DispatchQueue.global().async {
+//            let resized = self.resizeImage(image: self.imageView.image!, newWidth: CGFloat(self.imageShape[3]), newHeight: CGFloat(self.imageShape[2]))
+//            
+//            //        print(resized.size.width)
+//            
+//            let (r, g, b, _) = imageToMatrix(resized)
+//            var image = b + g + r
+//            for (i, _) in image.enumerated() {
+//                image[i] /= 255
+//            }
+//            self.deepNetwork.loadDeepNetworkFromBSON(self.path, inputImage: image, inputShape: self.imageShape, caching_mode:self.caching_mode)
+//            
+//            // 1. classify image (of cat)
+//            self.deepNetwork.yoloDetect(image, imageView: self.imageView)
+//        }
         
         dismiss(animated: true, completion: nil)
     }
@@ -69,18 +185,7 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
         // Do any additional setup after loading the view, typically from a nib.
         imagePicker.delegate = self
         imageView.image = #imageLiteral(resourceName: "lena")
-        // 0. load network in network model
-        
-//        let resized = resizeImage(image: #imageLiteral(resourceName: "lena"), newWidth: CGFloat(imageShape[3]), newHeight: CGFloat(imageShape[2]))
-//        
-//        print(resized.size.width)
-//        
-//        let (r, g, b, _) = imageToMatrix(resized)
-//        var image = b + g + r
-//        for (i, _) in image.enumerated() {
-//            image[i] /= 255
-//        }
-//        
+    
         deepNetwork = DeepNetwork()
     }
     
@@ -129,15 +234,6 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
 //        deepNetwork.classify(randomimage)
 // **********************comment out above to debug at launch time ******************//
         
-        // 2. reset deep network and classify random image
-//        deepNetwork.loadDeepNetworkFromJSON("nin_cifar10_full", inputImage: randomimage, inputShape: imageShape,caching_mode:caching_mode)
-//        deepNetwork.classify(randomimage)
-        
-        // 3. reset deep network and classify cat image again
-//        deepNetwork.loadDeepNetworkFromJSON("simple", inputImage: image, inputShape: imageShape,caching_mode:caching_mode)
-//        deepNetwork.classify(image)
-        
-//        exit(0)
     }
     
     override func didReceiveMemoryWarning() {

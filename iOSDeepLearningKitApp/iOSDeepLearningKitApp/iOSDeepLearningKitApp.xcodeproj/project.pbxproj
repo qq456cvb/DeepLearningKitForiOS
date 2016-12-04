@@ -35,6 +35,7 @@
 		9F914FE41DDBF5E3000E7C92 /* BsonUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F914FE31DDBF5E3000E7C92 /* BsonUtil.swift */; };
 		9F914FE61DDBF609000E7C92 /* yolo_tiny.bson in Resources */ = {isa = PBXBuildFile; fileRef = 9F914FE51DDBF609000E7C92 /* yolo_tiny.bson */; };
 		9F914FE81DDC0740000E7C92 /* naive.bson in Resources */ = {isa = PBXBuildFile; fileRef = 9F914FE71DDC0740000E7C92 /* naive.bson */; };
+		9FCF18F51DF39976005858BA /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9FCF18F41DF39976005858BA /* AVFoundation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -68,6 +69,7 @@
 		9F914FE31DDBF5E3000E7C92 /* BsonUtil.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BsonUtil.swift; sourceTree = "<group>"; };
 		9F914FE51DDBF609000E7C92 /* yolo_tiny.bson */ = {isa = PBXFileReference; lastKnownFileType = file; path = yolo_tiny.bson; sourceTree = "<group>"; };
 		9F914FE71DDC0740000E7C92 /* naive.bson */ = {isa = PBXFileReference; lastKnownFileType = file; path = naive.bson; sourceTree = "<group>"; };
+		9FCF18F41DF39976005858BA /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +77,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9FCF18F51DF39976005858BA /* AVFoundation.framework in Frameworks */,
 				67B14E431C6FEAAC00FCB69C /* QuartzCore.framework in Frameworks */,
 				67B14E411C6FEAA600FCB69C /* Metal.framework in Frameworks */,
 			);
@@ -90,6 +93,7 @@
 				67B14E401C6FEAA600FCB69C /* Metal.framework */,
 				67B14E2D1C6FE91400FCB69C /* iOSDeepLearningKitApp */,
 				67B14E2C1C6FE91400FCB69C /* Products */,
+				9FCF18F31DF39976005858BA /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -141,6 +145,14 @@
 				6B57D62E1C82E16F0082387B /* UIImageExtension.swift */,
 			);
 			name = ThirdParty;
+			sourceTree = "<group>";
+		};
+		9FCF18F31DF39976005858BA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9FCF18F41DF39976005858BA /* AVFoundation.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

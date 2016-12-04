@@ -30,7 +30,7 @@ public extension DeepNetwork {
         return Float(intersection) / Float(box1.size.width * box1.size.height + box2.size.width * box2.size.height - intersection)
     }
     
-    public func yoloDetect(_ flattenedTensorWithImage: [Float], imageView: UIImageView) {
+    public func yoloDetect(_ image: UIImage, imageView: UIImageView) {
         let start = Date()
         
 //        let inputTensor = createMetalBuffer(flattenedTensorWithImage, metalDevice:metalDevice)
@@ -73,7 +73,6 @@ public extension DeepNetwork {
         let iou_threshold: Float = 0.5
         var predictions = [Prediction]()
         var probs = [Float]()
-        let image = imageView.image!
         
         print("image size: \(image.size.width) * \(image.size.height)")
         for x in 0...6 {
@@ -143,61 +142,65 @@ public extension DeepNetwork {
             $0.prob > $1.prob
         })
         
-        UIGraphicsBeginImageContextWithOptions(image.size, true, 0)
-        image.draw(at: CGPoint(x: 0, y: 0))
-        UIColor.red.set()
-        for i in 0...(predictions.count-1) {
-            if (probs[i] == 0.0) {
-                continue
-            }
-            if i+1 <= predictions.count-1 {
-                for j in (i+1)...(predictions.count-1) {
-                    if iou(box1: predictions[i].rect, box2: predictions[j].rect) > iou_threshold {
-                        probs[j] = 0.0
+        DispatchQueue.main.async {
+            UIGraphicsBeginImageContextWithOptions(image.size, true, 0)
+            image.draw(at: CGPoint(x: 0, y: 0))
+            UIColor.red.set()
+            for i in 0...(predictions.count-1) {
+                if (probs[i] == 0.0) {
+                    continue
+                }
+                if i+1 <= predictions.count-1 {
+                    for j in (i+1)...(predictions.count-1) {
+                        if self.iou(box1: predictions[i].rect, box2: predictions[j].rect) > iou_threshold {
+                            probs[j] = 0.0
+                        }
                     }
                 }
+                
+                // set the text color to dark gray
+                let fieldColor: UIColor = UIColor.red
+                
+                // set the font to Helvetica Neue 18
+                let fieldFont = UIFont(name: "Helvetica Neue", size: image.size.width / 30.0)
+                
+                // set the line spacing to 6
+                let paraStyle = NSMutableParagraphStyle()
+                paraStyle.lineSpacing = 6.0
+                
+                // set the Obliqueness to 0.1
+                let skew = 0.1
+                
+                let attributes: NSDictionary = [
+                    NSForegroundColorAttributeName: fieldColor,
+                    NSParagraphStyleAttributeName: paraStyle,
+                    NSObliquenessAttributeName: skew,
+                    NSFontAttributeName: fieldFont!
+                ]
+                
+                predictions[i].cls.draw(in: CGRect(x:predictions[i].rect.origin.x + image.size.width / 100.0, y:predictions[i].rect.origin.y, width: predictions[i].rect.width, height: image.size.width / 30.0), withAttributes: attributes as? [String : Any])
+                
+                let p = UIBezierPath()
+                p.move(to: CGPoint(x: predictions[i].rect.origin.x, y: predictions[i].rect.origin.y))
+                p.addLine(to: CGPoint(x: predictions[i].rect.origin.x + predictions[i].rect.size.width, y: predictions[i].rect.origin.y))
+                p.move(to: CGPoint(x: predictions[i].rect.origin.x + predictions[i].rect.size.width, y: predictions[i].rect.origin.y))
+                p.addLine(to: CGPoint(x: predictions[i].rect.origin.x + predictions[i].rect.size.width, y: predictions[i].rect.origin.y + predictions[i].rect.size.height))
+                p.move(to: CGPoint(x: predictions[i].rect.origin.x + predictions[i].rect.size.width, y: predictions[i].rect.origin.y + predictions[i].rect.size.height))
+                p.addLine(to: CGPoint(x: predictions[i].rect.origin.x, y: predictions[i].rect.origin.y + predictions[i].rect.size.height))
+                p.move(to: CGPoint(x: predictions[i].rect.origin.x, y: predictions[i].rect.origin.y + predictions[i].rect.size.height))
+                p.addLine(to: CGPoint(x: predictions[i].rect.origin.x, y: predictions[i].rect.origin.y))
+                
+                p.lineWidth = image.size.width / 100.0
+                p.stroke()
+                p.fill()
+                
             }
             
-            // set the text color to dark gray
-            let fieldColor: UIColor = UIColor.red
             
-            // set the font to Helvetica Neue 18
-            let fieldFont = UIFont(name: "Helvetica Neue", size: image.size.width / 30.0)
+            imageView.image = UIGraphicsGetImageFromCurrentImageContext()
             
-            // set the line spacing to 6
-            let paraStyle = NSMutableParagraphStyle()
-            paraStyle.lineSpacing = 6.0
-            
-            // set the Obliqueness to 0.1
-            let skew = 0.1
-            
-            let attributes: NSDictionary = [
-                NSForegroundColorAttributeName: fieldColor,
-                NSParagraphStyleAttributeName: paraStyle,
-                NSObliquenessAttributeName: skew,
-                NSFontAttributeName: fieldFont!
-            ]
-            
-            predictions[i].cls.draw(in: CGRect(x:predictions[i].rect.origin.x + image.size.width / 100.0, y:predictions[i].rect.origin.y, width: predictions[i].rect.width, height: image.size.width / 30.0), withAttributes: attributes as? [String : Any])
-            
-            let p = UIBezierPath()
-            p.move(to: CGPoint(x: predictions[i].rect.origin.x, y: predictions[i].rect.origin.y))
-            p.addLine(to: CGPoint(x: predictions[i].rect.origin.x + predictions[i].rect.size.width, y: predictions[i].rect.origin.y))
-            p.move(to: CGPoint(x: predictions[i].rect.origin.x + predictions[i].rect.size.width, y: predictions[i].rect.origin.y))
-            p.addLine(to: CGPoint(x: predictions[i].rect.origin.x + predictions[i].rect.size.width, y: predictions[i].rect.origin.y + predictions[i].rect.size.height))
-            p.move(to: CGPoint(x: predictions[i].rect.origin.x + predictions[i].rect.size.width, y: predictions[i].rect.origin.y + predictions[i].rect.size.height))
-            p.addLine(to: CGPoint(x: predictions[i].rect.origin.x, y: predictions[i].rect.origin.y + predictions[i].rect.size.height))
-            p.move(to: CGPoint(x: predictions[i].rect.origin.x, y: predictions[i].rect.origin.y + predictions[i].rect.size.height))
-            p.addLine(to: CGPoint(x: predictions[i].rect.origin.x, y: predictions[i].rect.origin.y))
-            
-            p.lineWidth = image.size.width / 100.0
-            p.stroke()
-            p.fill()
-            
+            UIGraphicsEndImageContext()
         }
-        
-        imageView.image = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
         // return index
 //        return Float(output.index(of: output.max()!)!)
     }
