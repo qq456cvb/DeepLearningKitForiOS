@@ -1,3 +1,12 @@
+> **Note:** This is my fork of [DeepLearningKit](https://github.com/DeepLearningKit/DeepLearningKit) (the Metal + Swift on-device deep learning framework by Amund Tveit et al.), extended to run **YOLO object detection on iOS in real time**. On top of the original framework I added:
+> - a faster convolutional layer and a fully-connected layer with leaky ReLU,
+> - a compact binary-JSON (BSON) weight format to cut memory use when loading large models on device (paired with the [JsonToBinary](https://github.com/qq456cvb/JsonToBinary) converter),
+> - a simple UI with live camera capture (tap to capture) that runs detection and draws bounding boxes.
+>
+> The original DeepLearningKit README is preserved below.
+
+---
+
 # [DeepLearningKit](http://deeplearningkit.org)
 
 ## Deep Learning Framework for Apple's tvOS, iOS and OS X
